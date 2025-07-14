@@ -200,13 +200,17 @@ export class SimulinkJSONParser {
     logicBlocks.forEach((logicBlock) => {
       const varId = logicBlock.varId;
       const opField = logicBlock.opField; // AND, OR, NOT, etc.
+      const hasDestination = logicBlock.destination && Array.isArray(logicBlock.destination) && logicBlock.destination.length > 0;
+      
+      // Determina se è un Terminator: non ha destination o opField valido
+      const isTerminator = !hasDestination || !opField || opField === '' || opField === 'TERM';
       
       const block: SimulinkBlock = {
         id: varId,
-        name: opField || 'Logic',
-        blockType: 'Logical Operator',
-        position: { x: 0, y: 0, width: 80, height: 50 }, // Posizione temporanea
-        parameters: {
+        name: isTerminator ? (logicBlock.variableName || 'Terminator') : (opField || 'Logic'),
+        blockType: isTerminator ? 'Terminator' : 'Logical Operator',
+        position: { x: 0, y: 0, width: isTerminator ? 60 : 80, height: isTerminator ? 30 : 50 }, // Posizione temporanea
+        parameters: isTerminator ? {} : {
           operator: opField,
           opValue: logicBlock.opValue
         }
@@ -214,8 +218,8 @@ export class SimulinkJSONParser {
       
       blocks.push(block);
       
-      // Crea connessioni per i destination
-      if (logicBlock.destination && Array.isArray(logicBlock.destination)) {
+      // Crea connessioni per i destination (solo se non è un Terminator)
+      if (!isTerminator && hasDestination) {
         logicBlock.destination.forEach((dest: any, destIndex: number) => {
           const connection: SimulinkConnection = {
             id: `${varId}_to_${dest.varId}_${destIndex}`,
