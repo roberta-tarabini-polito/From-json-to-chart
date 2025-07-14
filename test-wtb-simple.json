@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-01-14",
+    "description": "Test per blocco WTB con singolo ingresso"
+  },
+  "blockCategories": {
+    "Logic": {
+      "blocks": [
+        {
+          "varId": "WTB_SIMPLE",
+          "variableName": "WTB_Single_Input",
+          "opField": "WTB",
+          "opValue": "Word→Bus",
+          "source": ["INPUT_SINGLE"],
+          "destination": [
+            { "varId": "TERM_1", "srcPortId": "input" },
+            { "varId": "TERM_2", "srcPortId": "input" },
+            { "varId": "TERM_3", "srcPortId": "input" },
+            { "varId": "TERM_4", "srcPortId": "input" }
+          ]
+        },
+        {
+          "varId": "INPUT_SINGLE",
+          "variableName": "Input_Word",
+          "opField": "Constant",
+          "opValue": "0x1234",
+          "destination": [
+            { "varId": "WTB_SIMPLE", "srcPortId": "input1" }
+          ]
+        },
+        {
+          "varId": "TERM_1",
+          "variableName": "Bit_0",
+          "opField": "TERM"
+        },
+        {
+          "varId": "TERM_2",
+          "variableName": "Bit_1", 
+          "opField": "TERM"
+        },
+        {
+          "varId": "TERM_3",
+          "variableName": "Bit_2",
+          "opField": "TERM"
+        },
+        {
+          "varId": "TERM_4",
+          "variableName": "Bit_3",
+          "opField": "TERM"
+        }
+      ]
+    }
+  }
+}

@@ -208,6 +208,9 @@ export class SimulinkJSONParser {
       // Determina se è un Switch
       const isSwitch = opField && (opField.includes('SWITCH') || opField.includes('Switch'));
       
+      // Determina se è un WTB (Word To Bus)
+      const isWTB = opField && (opField.includes('WTB') || opField.includes('Word To Bus') || opField.includes('WORD TO BUS'));
+      
       // Determina se è un Terminator: non ha destination o opField valido
       const isTerminator = !hasDestination || !opField || opField === '' || opField === 'TERM';
       
@@ -223,6 +226,10 @@ export class SimulinkJSONParser {
         blockType = 'Switch';
         name = 'Switch';
         dimensions = { width: 90, height: 70 };
+      } else if (isWTB) {
+        blockType = 'WTB';
+        name = 'WTB';
+        dimensions = { width: 120, height: 80 };
       } else if (isTerminator) {
         blockType = 'Terminator';
         name = logicBlock.variableName || 'Terminator';
@@ -254,6 +261,18 @@ export class SimulinkJSONParser {
         ];
         outputs = [
           { id: 'y', type: 'output', name: 'y' }
+        ];
+      } else if (isWTB) {
+        // WTB può avere 1 o 2 ingressi e sempre 4 uscite
+        inputs = [
+          { id: 'input1', type: 'input', name: 'in1' },
+          { id: 'input2', type: 'input', name: 'in2' }
+        ];
+        outputs = [
+          { id: 'output1', type: 'output', name: 'out1' },
+          { id: 'output2', type: 'output', name: 'out2' },
+          { id: 'output3', type: 'output', name: 'out3' },
+          { id: 'output4', type: 'output', name: 'out4' }
         ];
       } else if (isTerminator) {
         inputs = [{ id: 'input', type: 'input', name: 'input' }];
@@ -295,11 +314,29 @@ export class SimulinkJSONParser {
             targetPortId = 'input';
           }
           
+          // Determina il portId di sorgente in base al tipo di blocco e al destIndex
+          let sourcePortId = 'output';
+          if (isSwitch) {
+            sourcePortId = 'y';
+          } else if (isFlipFlop) {
+            sourcePortId = 'Q';
+          } else if (isWTB) {
+            // Per WTB, mappa le destinazioni alle porte di output
+            switch (destIndex) {
+              case 0: sourcePortId = 'output1'; break;
+              case 1: sourcePortId = 'output2'; break;
+              case 2: sourcePortId = 'output3'; break;
+              case 3: sourcePortId = 'output4'; break;
+              default: sourcePortId = 'output1'; break;
+            }
+            console.log(`Parser WTB - destination[${destIndex}] -> porta ${sourcePortId}`);
+          }
+          
           const connection: SimulinkConnection = {
             id: `${varId}_to_${dest.varId}_${destIndex}`,
             source: {
               blockId: varId,
-              portId: isSwitch ? 'y' : isFlipFlop ? 'Q' : 'output'
+              portId: sourcePortId
             },
             target: {
               blockId: dest.varId,
@@ -319,6 +356,7 @@ export class SimulinkJSONParser {
       const varId = logicBlock.varId;
       const isSwitch = logicBlock.opField && (logicBlock.opField.includes('SWITCH') || logicBlock.opField.includes('Switch'));
       const isFlipFlop = logicBlock.opField && (logicBlock.opField.includes('FLIP FLOP') || logicBlock.opField.includes('FFSH'));
+      const isWTB = logicBlock.opField && (logicBlock.opField.includes('WTB') || logicBlock.opField.includes('Word To Bus') || logicBlock.opField.includes('WORD TO BUS'));
       
       // Se il blocco ha un array 'source', crea le connessioni in ingresso
       if (logicBlock.source && Array.isArray(logicBlock.source) && logicBlock.source.length > 0) {
@@ -347,6 +385,15 @@ export class SimulinkJSONParser {
             }
             console.log(`Parser FLIP-FLOP - source[${sourceIndex}] (${sourceBlockId}) -> porta ${targetPortId}`);
           }
+          // Per blocchi WTB, assegna input1 e input2
+          else if (isWTB) {
+            switch (sourceIndex) {
+              case 0: targetPortId = 'input1'; break;
+              case 1: targetPortId = 'input2'; break;
+              default: targetPortId = 'input1'; break; // Fallback
+            }
+            console.log(`Parser WTB - source[${sourceIndex}] (${sourceBlockId}) -> porta ${targetPortId}`);
+          }
           
           // Trova il blocco sorgente per determinare il portId di output
           const sourceBlockObj = blocks.find(b => b.id === sourceBlockId);
@@ -356,6 +403,8 @@ export class SimulinkJSONParser {
               sourcePortId = 'y';
             } else if (sourceBlockObj.blockType === 'FlipFlop') {
               sourcePortId = 'Q';
+            } else if (sourceBlockObj.blockType === 'WTB') {
+              sourcePortId = 'output1'; // Default alla prima uscita
             }
           }
           

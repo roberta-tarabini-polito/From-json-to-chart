@@ -388,6 +388,9 @@ export class SimulinkRenderer {
     // Gestione speciale per Switch
     const isSwitch = block.blockType === 'Switch' || block.name === 'Switch';
     
+    // Gestione speciale per WTB (Word To Bus)
+    const isWTB = block.blockType === 'WTB' || block.name === 'WTB';
+    
     if (isFlipFlop) {
       // Flip-Flop: Input S (alto sx), R (basso sx), Output Q (alto dx), Q! (basso dx)
       
@@ -458,6 +461,57 @@ export class SimulinkRenderer {
       
       // Aggiungi etichette delle porte per i Switch
       this.renderSwitchPortLabels(element, block);
+      
+      return;
+    }
+    
+    if (isWTB) {
+      // WTB: 2 Input (alto e basso sx), 4 Output (4 posizioni dx)
+      
+      // Input 1 - alto a sinistra
+      element.append('circle')
+        .attr('class', 'port input')
+        .attr('cx', -3)
+        .attr('cy', height * 0.3)
+        .attr('r', 3);
+      
+      // Input 2 - basso a sinistra
+      element.append('circle')
+        .attr('class', 'port input')
+        .attr('cx', -3)
+        .attr('cy', height * 0.7)
+        .attr('r', 3);
+      
+      // Output 1 - alto a destra
+      element.append('circle')
+        .attr('class', 'port output')
+        .attr('cx', width + 3)
+        .attr('cy', height * 0.15)
+        .attr('r', 3);
+      
+      // Output 2 - medio-alto a destra
+      element.append('circle')
+        .attr('class', 'port output')
+        .attr('cx', width + 3)
+        .attr('cy', height * 0.38)
+        .attr('r', 3);
+      
+      // Output 3 - medio-basso a destra
+      element.append('circle')
+        .attr('class', 'port output')
+        .attr('cx', width + 3)
+        .attr('cy', height * 0.62)
+        .attr('r', 3);
+      
+      // Output 4 - basso a destra
+      element.append('circle')
+        .attr('class', 'port output')
+        .attr('cx', width + 3)
+        .attr('cy', height * 0.85)
+        .attr('r', 3);
+      
+      // Aggiungi etichette delle porte per i WTB
+      this.renderWTBPortLabels(element, block);
       
       return;
     }
@@ -594,6 +648,67 @@ export class SimulinkRenderer {
       .attr('font-weight', 'bold')
       .attr('fill', '#333')
       .text('y');
+  }
+
+  private renderWTBPortLabels(element: d3.Selection<d3.BaseType, SimulinkBlock, d3.BaseType, unknown>, block: SimulinkBlock): void {
+    const width = block.position.width || 120;
+    const height = block.position.height || 80;
+    
+    // Etichette Input - sinistra
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', 8)
+      .attr('y', height * 0.3 + 4)
+      .attr('font-size', '8px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('in1');
+    
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', 8)
+      .attr('y', height * 0.7 + 4)
+      .attr('font-size', '8px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('in2');
+    
+    // Etichette Output - destra (4 uscite)
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', width - 25)
+      .attr('y', height * 0.15 + 4)
+      .attr('font-size', '8px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('out1');
+    
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', width - 25)
+      .attr('y', height * 0.38 + 4)
+      .attr('font-size', '8px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('out2');
+    
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', width - 25)
+      .attr('y', height * 0.62 + 4)
+      .attr('font-size', '8px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('out3');
+    
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', width - 25)
+      .attr('y', height * 0.85 + 4)
+      .attr('font-size', '8px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('out4');
   }
 
   private renderConnections(): void {
@@ -1133,6 +1248,28 @@ export class SimulinkRenderer {
           case 'Q': return { x: baseX, y: block.position.y + height * 0.25 };
           case 'Q!': return { x: baseX, y: block.position.y + height * 0.75 };
           default: return { x: baseX, y: block.position.y + height / 2 };
+        }
+      }
+    }
+    
+    // Gestione speciale per blocchi WTB (Word To Bus)
+    const isWTB = block.blockType === 'WTB' || block.name === 'WTB';
+    if (isWTB) {
+      if (!isOutput) {
+        // Input ports per WTB
+        switch (portId) {
+          case 'input1': return { x: baseX, y: block.position.y + height * 0.3 };
+          case 'input2': return { x: baseX, y: block.position.y + height * 0.7 };
+          default: return { x: baseX, y: block.position.y + height * 0.3 };
+        }
+      } else {
+        // Output ports per WTB (4 uscite)
+        switch (portId) {
+          case 'output1': return { x: baseX, y: block.position.y + height * 0.15 };
+          case 'output2': return { x: baseX, y: block.position.y + height * 0.38 };
+          case 'output3': return { x: baseX, y: block.position.y + height * 0.62 };
+          case 'output4': return { x: baseX, y: block.position.y + height * 0.85 };
+          default: return { x: baseX, y: block.position.y + height * 0.15 };
         }
       }
     }

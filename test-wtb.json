@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-01-14",
+    "description": "Test per blocco WTB (Word To Bus)"
+  },
+  "blockCategories": {
+    "Logic": {
+      "blocks": [
+        {
+          "varId": "WTB_001",
+          "variableName": "Word_To_Bus_1",
+          "opField": "WTB",
+          "opValue": "Word→Bus",
+          "source": ["INPUT_A", "INPUT_B"],
+          "destination": [
+            { "varId": "OUT_1", "srcPortId": "input" },
+            { "varId": "OUT_2", "srcPortId": "input" },
+            { "varId": "OUT_3", "srcPortId": "input" },
+            { "varId": "OUT_4", "srcPortId": "input" }
+          ]
+        },
+        {
+          "varId": "INPUT_A",
+          "variableName": "Input_Signal_A",
+          "opField": "AND",
+          "opValue": "Signal A",
+          "destination": [
+            { "varId": "WTB_001", "srcPortId": "input1" }
+          ]
+        },
+        {
+          "varId": "INPUT_B",
+          "variableName": "Input_Signal_B", 
+          "opField": "OR",
+          "opValue": "Signal B",
+          "destination": [
+            { "varId": "WTB_001", "srcPortId": "input2" }
+          ]
+        },
+        {
+          "varId": "OUT_1",
+          "variableName": "Output_1",
+          "opField": "TERM"
+        },
+        {
+          "varId": "OUT_2",
+          "variableName": "Output_2",
+          "opField": "TERM"
+        },
+        {
+          "varId": "OUT_3",
+          "variableName": "Output_3",
+          "opField": "TERM"
+        },
+        {
+          "varId": "OUT_4",
+          "variableName": "Output_4",
+          "opField": "TERM"
+        }
+      ]
+    }
+  }
+}

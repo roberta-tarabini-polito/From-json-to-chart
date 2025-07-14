@@ -209,6 +209,13 @@ export const BLOCK_RENDER_CONFIGS: Record<string, BlockRenderConfig> = {
     shape: 'rectangle',
     showPorts: true
   },
+  'WTB': {
+    width: 120,
+    height: 80,
+    color: '#E1F5FE',
+    shape: 'rectangle',
+    showPorts: true
+  },
   'Terminatore': {
     width: 60,
     height: 30,
