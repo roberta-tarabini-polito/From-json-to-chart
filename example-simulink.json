@@ -1,0 +1,121 @@
+{
+  "name": "Sistema di Controllo PID",
+  "version": "1.0",
+  "metadata": {
+    "created": "2025-01-13",
+    "simulinkVersion": "R2023b",
+    "author": "Simulink JSON Converter"
+  },
+  "blocks": [
+    {
+      "id": "reference_input",
+      "name": "Reference",
+      "blockType": "Constant",
+      "position": { "x": 50, "y": 150, "width": 60, "height": 30 },
+      "parameters": {
+        "Value": "1",
+        "OutDataTypeStr": "double"
+      }
+    },
+    {
+      "id": "sum_error",
+      "name": "Sum",
+      "blockType": "Sum",
+      "position": { "x": 150, "y": 150, "width": 40, "height": 40 },
+      "parameters": {
+        "Inputs": "+-",
+        "IconShape": "round"
+      }
+    },
+    {
+      "id": "pid_controller",
+      "name": "PID Controller",
+      "blockType": "PID Controller",
+      "position": { "x": 230, "y": 140, "width": 80, "height": 60 },
+      "parameters": {
+        "P": "1",
+        "I": "0.1",
+        "D": "0.01",
+        "FilterCoefficient": "100"
+      }
+    },
+    {
+      "id": "plant_tf",
+      "name": "Plant",
+      "blockType": "Transfer Fcn",
+      "position": { "x": 350, "y": 150, "width": 80, "height": 40 },
+      "parameters": {
+        "Numerator": "[1]",
+        "Denominator": "[1 2 1]"
+      }
+    },
+    {
+      "id": "output_scope",
+      "name": "Output",
+      "blockType": "Scope",
+      "position": { "x": 470, "y": 150, "width": 60, "height": 40 },
+      "parameters": {
+        "NumInputPorts": "1",
+        "DataFormat": "Array"
+      }
+    },
+    {
+      "id": "feedback_gain",
+      "name": "Feedback",
+      "blockType": "Gain",
+      "position": { "x": 350, "y": 250, "width": 60, "height": 30 },
+      "parameters": {
+        "Gain": "1"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_ref_to_sum",
+      "source": { "blockId": "reference_input", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "sum_error", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "reference", "dataType": "double" }
+    },
+    {
+      "id": "conn_sum_to_pid",
+      "source": { "blockId": "sum_error", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "pid_controller", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "error", "dataType": "double" }
+    },
+    {
+      "id": "conn_pid_to_plant",
+      "source": { "blockId": "pid_controller", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "plant_tf", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "control_signal", "dataType": "double" }
+    },
+    {
+      "id": "conn_plant_to_scope",
+      "source": { "blockId": "plant_tf", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "output_scope", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "output", "dataType": "double" }
+    },
+    {
+      "id": "conn_plant_to_feedback",
+      "source": { "blockId": "plant_tf", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "feedback_gain", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "feedback_signal", "dataType": "double" },
+      "waypoints": [
+        { "x": 430, "y": 170 },
+        { "x": 430, "y": 265 },
+        { "x": 350, "y": 265 }
+      ]
+    },
+    {
+      "id": "conn_feedback_to_sum",
+      "source": { "blockId": "feedback_gain", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "sum_error", "portId": "input", "portIndex": 1 },
+      "signal": { "name": "feedback", "dataType": "double" },
+      "waypoints": [
+        { "x": 410, "y": 265 },
+        { "x": 120, "y": 265 },
+        { "x": 120, "y": 180 },
+        { "x": 150, "y": 180 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertitore JSON Alstom - FUNZIONANTE</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        #chart-container {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            min-height: 400px;
+        }
+
+        #chart {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #eee;
+            background: #fafafa;
+        }
+
+        .block {
+            cursor: pointer;
+        }
+
+        .block:hover rect {
+            stroke-width: 2px;
+            stroke: #007bff;
+        }
+
+        .connection {
+            fill: none;
+            stroke: #666;
+            stroke-width: 2px;
+            marker-end: url(#arrowhead);
+        }
+
+        .debug {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Convertitore JSON Alstom → Diagramma</h1>
+            <p>Supporta: LibFrom, LibGoto, Operatori Logici, Costanti, Terminatori</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <h3>📥 Inserisci JSON Alstom</h3>
+                <textarea id="jsonInput" placeholder="Incolla qui il tuo JSON Alstom...">{
+  "metadata": {
+    "subsystemName": "Esempio Completo",
+    "version": "1.0",
+    "sourceFile": "esempio.mdl"
+  },
+  "blockCategories": {
+    "Variable": {
+      "blocks": [
+        {
+          "varId": "LibFrom_Input1",
+          "variableName": "Segnale Input",
+          "description": "Segnale di ingresso principale",
+          "destination": [{"varId": "AND_Gate1"}]
+        },
+        {
+          "varId": "LibGoto_Output1",
+          "variableName": "Uscita Finale",
+          "description": "Risultato del processo logico"
+        }
+      ]
+    },
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "AND_Gate1",
+          "opField": "AND",
+          "opValue": "&&",
+          "destination": [
+            {"varId": "OR_Gate1"},
+            {"varId": "Terminator1"}
+          ]
+        },
+        {
+          "varId": "OR_Gate1",
+          "opField": "OR",
+          "opValue": "||",
+          "destination": [{"varId": "LibGoto_Output1"}]
+        }
+      ]
+    },
+    "Constant": {
+      "blocks": [
+        {
+          "varId": "Const_True",
+          "variableName": "Valore Vero",
+          "description": "Costante sempre vera",
+          "value": "1",
+          "constantValue": "true",
+          "destination": [{"varId": "AND_Gate1"}]
+        },
+        {
+          "varId": "Const_False",
+          "variableName": "Valore Falso",
+          "value": "0",
+          "destination": [{"varId": "OR_Gate1"}]
+        }
+      ]
+    },
+    "Terminator": {
+      "blocks": [
+        {
+          "varId": "Terminator1",
+          "variableName": "Debug Term",
+          "description": "Terminatore per debug"
+        }
+      ]
+    }
+  }
+}</textarea>
+
+                <button onclick="analizzaJSON()" id="analyzeBtn">🔍 ANALIZZA JSON</button>
+                <button onclick="pulisciTutto()">🗑️ Pulisci</button>
+                
+                <div id="status" class="status"></div>
+            </div>
+
+            <div id="debug" class="debug" style="display: none;">
+                <h4>🐛 Debug Info:</h4>
+                <div id="debugContent"></div>
+            </div>
+
+            <div id="chart-container">
+                <h3>📊 Diagramma di Flusso</h3>
+                <div id="chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variabili globali
+        let currentModel = null;
+        let debugMode = true;
+
+        // Configurazioni colori per i blocchi
+        const BLOCK_COLORS = {
+            'LibFrom': '#E8F5E8',
+            'LibGoto': '#FFE0B2',
+            'Costante': '#FFF9C4',
+            'Logical Operator': '#E1F5FE',
+            'Terminatore': '#FFCDD2',
+            'Variable': '#F3E5F5'
+        };
+
+        function log(message, data = null) {
+            console.log(message, data);
+            if (debugMode) {
+                const debugDiv = document.getElementById('debugContent');
+                const time = new Date().toLocaleTimeString();
+                debugDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+                if (data) {
+                    debugDiv.innerHTML += `<div style="margin-left: 20px; color: #666;">${JSON.stringify(data, null, 2)}</div>`;
+                }
+                document.getElementById('debug').style.display = 'block';
+            }
+        }
+
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function analizzaJSON() {
+            try {
+                log("🚀 Inizio analisi JSON");
+                
+                // Reset debug
+                document.getElementById('debugContent').innerHTML = '';
+                
+                // Ottieni il testo JSON
+                const jsonText = document.getElementById('jsonInput').value.trim();
+                log("📝 Lunghezza testo JSON:", jsonText.length);
+                
+                if (!jsonText) {
+                    throw new Error("Nessun JSON inserito!");
+                }
+
+                // Parse del JSON
+                log("🔄 Parsing JSON...");
+                const jsonData = JSON.parse(jsonText);
+                log("✅ JSON parsato con successo", {
+                    metadata: jsonData.metadata,
+                    categorie: Object.keys(jsonData.blockCategories || {})
+                });
+
+                // Verifica struttura Alstom
+                if (!jsonData.metadata || !jsonData.blockCategories) {
+                    throw new Error("JSON non in formato Alstom! Mancano 'metadata' o 'blockCategories'");
+                }
+
+                // Processa i blocchi
+                log("🔧 Elaborazione blocchi...");
+                const model = processAlstomJSON(jsonData);
+                log("📦 Modello creato", {
+                    nome: model.name,
+                    blocchi: model.blocks.length,
+                    connessioni: model.connections.length
+                });
+
+                // Salva e visualizza
+                currentModel = model;
+                visualizzaDiagramma(model);
+                
+                showStatus(`✅ Successo! Caricati ${model.blocks.length} blocchi e ${model.connections.length} connessioni`, 'success');
+
+            } catch (error) {
+                log("❌ ERRORE:", error.message);
+                showStatus(`❌ Errore: ${error.message}`, 'error');
+                console.error("Errore completo:", error);
+            }
+        }
+
+        function processAlstomJSON(data) {
+            const metadata = data.metadata;
+            const categories = data.blockCategories;
+            
+            const allBlocks = [];
+            const allConnections = [];
+            
+            log("📋 Categorie trovate:", Object.keys(categories));
+
+            // Processa Variabili (LibFrom/LibGoto)
+            if (categories.Variable && categories.Variable.blocks) {
+                log("🔗 Processando variabili...", categories.Variable.blocks.length + " blocchi");
+                categories.Variable.blocks.forEach(varBlock => {
+                    const block = createVariableBlock(varBlock);
+                    allBlocks.push(block);
+                    
+                    // Crea connessioni
+                    if (varBlock.destination) {
+                        varBlock.destination.forEach((dest, index) => {
+                            allConnections.push({
+                                id: `${varBlock.varId}_to_${dest.varId}_${index}`,
+                                source: { blockId: varBlock.varId, portId: 'output' },
+                                target: { blockId: dest.varId, portId: 'input' }
+                            });
+                        });
+                    }
+                });
+            }
+
+            // Processa Operatori Logici
+            if (categories['Logic Rule'] && categories['Logic Rule'].blocks) {
+                log("⚡ Processando operatori logici...", categories['Logic Rule'].blocks.length + " blocchi");
+                categories['Logic Rule'].blocks.forEach(logicBlock => {
+                    const block = createLogicBlock(logicBlock);
+                    allBlocks.push(block);
+                    
+                    if (logicBlock.destination) {
+                        logicBlock.destination.forEach((dest, index) => {
+                            allConnections.push({
+                                id: `${logicBlock.varId}_to_${dest.varId}_${index}`,
+                                source: { blockId: logicBlock.varId, portId: 'output' },
+                                target: { blockId: dest.varId, portId: 'input' }
+                            });
+                        });
+                    }
+                });
+            }
+
+            // Processa Costanti
+            if (categories.Constant && categories.Constant.blocks) {
+                log("🔢 Processando costanti...", categories.Constant.blocks.length + " blocchi");
+                categories.Constant.blocks.forEach(constBlock => {
+                    const block = createConstantBlock(constBlock);
+                    allBlocks.push(block);
+                    
+                    if (constBlock.destination) {
+                        constBlock.destination.forEach((dest, index) => {
+                            allConnections.push({
+                                id: `${constBlock.varId}_to_${dest.varId}_${index}`,
+                                source: { blockId: constBlock.varId, portId: 'output' },
+                                target: { blockId: dest.varId, portId: 'input' }
+                            });
+                        });
+                    }
+                });
+            }
+
+            // Processa Terminatori
+            if (categories.Terminator && categories.Terminator.blocks) {
+                log("🛑 Processando terminatori...", categories.Terminator.blocks.length + " blocchi");
+                categories.Terminator.blocks.forEach(termBlock => {
+                    const block = createTerminatorBlock(termBlock);
+                    allBlocks.push(block);
+                });
+            }
+
+            // Calcola layout
+            log("📐 Calcolando layout...");
+            calculateLayout(allBlocks, allConnections);
+
+            return {
+                name: metadata.subsystemName || 'Modello Alstom',
+                blocks: allBlocks,
+                connections: allConnections,
+                metadata: metadata
+            };
+        }
+
+        function createVariableBlock(varBlock) {
+            let blockType = 'Variable';
+            if (varBlock.varId.includes('LibFrom')) blockType = 'LibFrom';
+            else if (varBlock.varId.includes('LibGoto')) blockType = 'LibGoto';
+
+            return {
+                id: varBlock.varId,
+                name: varBlock.variableName || varBlock.varId,
+                blockType: blockType,
+                position: { x: 0, y: 0, width: 120, height: 60 },
+                parameters: {
+                    variableName: varBlock.variableName,
+                    description: varBlock.description
+                }
+            };
+        }
+
+        function createLogicBlock(logicBlock) {
+            return {
+                id: logicBlock.varId,
+                name: logicBlock.opField || 'Logic',
+                blockType: 'Logical Operator',
+                position: { x: 0, y: 0, width: 80, height: 50 },
+                parameters: {
+                    operator: logicBlock.opField,
+                    opValue: logicBlock.opValue
+                }
+            };
+        }
+
+        function createConstantBlock(constBlock) {
+            return {
+                id: constBlock.varId,
+                name: constBlock.variableName || 'Costante',
+                blockType: 'Costante',
+                position: { x: 0, y: 0, width: 80, height: 40 },
+                parameters: {
+                    variableName: constBlock.variableName,
+                    value: constBlock.value || '0',
+                    description: constBlock.description
+                }
+            };
+        }
+
+        function createTerminatorBlock(termBlock) {
+            return {
+                id: termBlock.varId,
+                name: termBlock.variableName || 'Terminatore',
+                blockType: 'Terminatore',
+                position: { x: 0, y: 0, width: 60, height: 30 },
+                parameters: {
+                    variableName: termBlock.variableName,
+                    description: termBlock.description
+                }
+            };
+        }
+
+        function calculateLayout(blocks, connections) {
+            log("📏 Calcolando posizioni blocchi...");
+            
+            const LEVEL_WIDTH = 250;
+            const BLOCK_SPACING = 80;
+            const START_X = 50;
+            const START_Y = 50;
+
+            // Raggruppa per tipo e livello logico
+            const inputBlocks = blocks.filter(b => 
+                b.blockType === 'LibFrom' || b.blockType === 'Costante'
+            );
+            const logicBlocks = blocks.filter(b => 
+                b.blockType === 'Logical Operator'
+            );
+            const outputBlocks = blocks.filter(b => 
+                b.blockType === 'LibGoto' || b.blockType === 'Terminatore'
+            );
+
+            log("📊 Gruppi blocchi:", {
+                input: inputBlocks.length,
+                logic: logicBlocks.length,
+                output: outputBlocks.length
+            });
+
+            // Posiziona input a sinistra
+            inputBlocks.forEach((block, index) => {
+                block.position.x = START_X;
+                block.position.y = START_Y + (index * BLOCK_SPACING);
+            });
+
+            // Posiziona logica al centro
+            logicBlocks.forEach((block, index) => {
+                block.position.x = START_X + LEVEL_WIDTH;
+                block.position.y = START_Y + (index * BLOCK_SPACING);
+            });
+
+            // Posiziona output a destra
+            outputBlocks.forEach((block, index) => {
+                block.position.x = START_X + (2 * LEVEL_WIDTH);
+                block.position.y = START_Y + (index * BLOCK_SPACING);
+            });
+
+            log("✅ Layout calcolato");
+        }
+
+        function visualizzaDiagramma(model) {
+            log("🎨 Iniziando visualizzazione...");
+            
+            // Pulisci area chart
+            d3.select('#chart').selectAll('*').remove();
+
+            // Crea SVG
+            const svg = d3.select('#chart')
+                .append('svg')
+                .attr('width', '100%')
+                .attr('height', '100%')
+                .attr('viewBox', '0 0 800 500');
+
+            // Definisci marker per frecce
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 8)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#666');
+
+            // Disegna connessioni
+            if (model.connections && model.connections.length > 0) {
+                log("🔗 Disegnando connessioni:", model.connections.length);
+                
+                svg.selectAll('.connection')
+                    .data(model.connections)
+                    .enter()
+                    .append('line')
+                    .attr('class', 'connection')
+                    .attr('x1', d => {
+                        const sourceBlock = model.blocks.find(b => b.id === d.source.blockId);
+                        return sourceBlock ? sourceBlock.position.x + sourceBlock.position.width : 0;
+                    })
+                    .attr('y1', d => {
+                        const sourceBlock = model.blocks.find(b => b.id === d.source.blockId);
+                        return sourceBlock ? sourceBlock.position.y + sourceBlock.position.height/2 : 0;
+                    })
+                    .attr('x2', d => {
+                        const targetBlock = model.blocks.find(b => b.id === d.target.blockId);
+                        return targetBlock ? targetBlock.position.x : 0;
+                    })
+                    .attr('y2', d => {
+                        const targetBlock = model.blocks.find(b => b.id === d.target.blockId);
+                        return targetBlock ? targetBlock.position.y + targetBlock.position.height/2 : 0;
+                    });
+            }
+
+            // Disegna blocchi
+            log("📦 Disegnando blocchi:", model.blocks.length);
+            
+            const blocks = svg.selectAll('.block')
+                .data(model.blocks)
+                .enter()
+                .append('g')
+                .attr('class', 'block')
+                .attr('transform', d => `translate(${d.position.x}, ${d.position.y})`);
+
+            // Rettangoli dei blocchi
+            blocks.append('rect')
+                .attr('width', d => d.position.width)
+                .attr('height', d => d.position.height)
+                .attr('fill', d => BLOCK_COLORS[d.blockType] || '#F0F0F0')
+                .attr('stroke', '#333')
+                .attr('stroke-width', 1)
+                .attr('rx', 4);
+
+            // Testo dei blocchi
+            blocks.append('text')
+                .attr('x', d => d.position.width / 2)
+                .attr('y', d => d.position.height / 2)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('font-size', '12px')
+                .attr('font-family', 'Arial, sans-serif')
+                .attr('font-weight', 'bold')
+                .text(d => d.name);
+
+            // Tipo blocco sotto
+            blocks.append('text')
+                .attr('x', d => d.position.width / 2)
+                .attr('y', d => d.position.height - 5)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '10px')
+                .attr('font-family', 'Arial, sans-serif')
+                .attr('fill', '#666')
+                .text(d => d.blockType);
+
+            log("✅ Visualizzazione completata!");
+        }
+
+        function pulisciTutto() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('debug').style.display = 'none';
+            d3.select('#chart').selectAll('*').remove();
+            currentModel = null;
+            log("🧹 Tutto pulito!");
+        }
+
+        // Inizializzazione
+        window.onload = function() {
+            log("🚀 Applicazione caricata e pronta!");
+            showStatus("📝 Inserisci il JSON Alstom nell'area di testo e clicca 'ANALIZZA JSON'", 'success');
+        };
+    </script>
+</body>
+</html>

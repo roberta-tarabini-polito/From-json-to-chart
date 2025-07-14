@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulink JSON to Chart Converter</title>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Convertitore JSON Simulink a Diagramma</h1>
+        <p>Carica un file JSON generato da modelli Simulink (.mdl) per visualizzare il diagramma di flusso</p>
+      </header>
+      
+      <main>
+        <div class="controls">
+          <div class="input-section">
+            <h2>Carica JSON</h2>
+            <input type="file" id="fileInput" accept=".json" />
+            <div class="textarea-container">
+              <label for="jsonInput">O incolla il JSON qui:</label>
+              <textarea id="jsonInput" placeholder='Incolla qui il JSON dei blocchi Simulink...'></textarea>
+            </div>
+            <button id="loadBtn">Carica e Visualizza</button>
+          </div>
+          
+          <div class="options-section">
+            <h3>Opzioni di Visualizzazione</h3>
+            <label>
+              <input type="checkbox" id="showParams" checked> Mostra parametri dei blocchi
+            </label>
+            <label>
+              <input type="checkbox" id="showPorts" checked> Mostra porte di ingresso/uscita
+            </label>
+            <label>
+              <input type="range" id="zoomSlider" min="0.1" max="2" step="0.1" value="1"> Zoom
+            </label>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <div id="chart"></div>
+          <div id="blockDetails" class="block-details"></div>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simulink JSON Parser</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        textarea { width: 100%; height: 200px; margin: 10px 0; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #result { margin: 20px 0; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
+        #chart { width: 100%; height: 400px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Test Simulink JSON Parser</h1>
+    
+    <textarea id="jsonInput" placeholder="Incolla qui il JSON del tuo modello Alstom...">
+{
+  "metadata": {
+    "subsystemName": "Test Model",
+    "version": "1.0",
+    "sourceFile": "test.mdl"
+  },
+  "blockCategories": {
+    "Variable": {
+      "blocks": [
+        {
+          "varId": "LibFrom_Input1",
+          "variableName": "Input Signal",
+          "description": "Input variable",
+          "destination": [{"varId": "AND_Gate1"}]
+        },
+        {
+          "varId": "LibGoto_Output1", 
+          "variableName": "Final Output",
+          "description": "Output variable"
+        }
+      ]
+    },
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "AND_Gate1",
+          "opField": "AND",
+          "opValue": "&&",
+          "destination": [{"varId": "LibGoto_Output1"}]
+        }
+      ]
+    },
+    "Constant": {
+      "blocks": [
+        {
+          "varId": "Const_True",
+          "variableName": "True Constant",
+          "value": "1",
+          "destination": [{"varId": "AND_Gate1"}]
+        }
+      ]
+    },
+    "Terminator": {
+      "blocks": [
+        {
+          "varId": "Terminator1",
+          "variableName": "Debug Terminator"
+        }
+      ]
+    }
+  }
+}
+    </textarea>
+    
+    <button onclick="testParser()">Test Parser</button>
+    <button onclick="renderChart()">Render Chart</button>
+    
+    <div id="result"></div>
+    <div id="chart"></div>
+
+    <script>
+        let currentModel = null;
+
+        // Parser semplificato
+        class SimpleParser {
+            static parseAlstomFormat(data) {
+                console.log('Parsing Alstom format:', data);
+                
+                const metadata = data.metadata;
+                const blockCategories = data.blockCategories;
+                
+                const allBlocks = [];
+                const allConnections = [];
+                
+                // Estrai variabili
+                if (blockCategories.Variable && blockCategories.Variable.blocks) {
+                    blockCategories.Variable.blocks.forEach(varBlock => {
+                        const varId = varBlock.varId;
+                        const variableName = varBlock.variableName;
+                        
+                        let blockType = 'Variable';
+                        if (varId.includes('LibFrom')) blockType = 'LibFrom';
+                        else if (varId.includes('LibGoto')) blockType = 'LibGoto';
+                        
+                        const block = {
+                            id: varId,
+                            name: variableName || varId,
+                            blockType: blockType,
+                            position: { x: 0, y: 0, width: 120, height: 60 },
+                            parameters: {
+                                variableName: variableName,
+                                description: varBlock.description
+                            }
+                        };
+                        
+                        allBlocks.push(block);
+                        
+                        if (varBlock.destination) {
+                            varBlock.destination.forEach((dest, index) => {
+                                allConnections.push({
+                                    id: `${varId}_to_${dest.varId}_${index}`,
+                                    source: { blockId: varId, portId: 'output' },
+                                    target: { blockId: dest.varId, portId: 'input' }
+                                });
+                            });
+                        }
+                    });
+                }
+                
+                // Estrai operatori logici
+                if (blockCategories['Logic Rule'] && blockCategories['Logic Rule'].blocks) {
+                    blockCategories['Logic Rule'].blocks.forEach(logicBlock => {
+                        const varId = logicBlock.varId;
+                        const opField = logicBlock.opField;
+                        
+                        const block = {
+                            id: varId,
+                            name: opField || 'Logic',
+                            blockType: 'Logical Operator',
+                            position: { x: 0, y: 0, width: 80, height: 50 },
+                            parameters: {
+                                operator: opField,
+                                opValue: logicBlock.opValue
+                            }
+                        };
+                        
+                        allBlocks.push(block);
+                        
+                        if (logicBlock.destination) {
+                            logicBlock.destination.forEach((dest, index) => {
+                                allConnections.push({
+                                    id: `${varId}_to_${dest.varId}_${index}`,
+                                    source: { blockId: varId, portId: 'output' },
+                                    target: { blockId: dest.varId, portId: 'input' }
+                                });
+                            });
+                        }
+                    });
+                }
+                
+                // Estrai costanti
+                if (blockCategories.Constant && blockCategories.Constant.blocks) {
+                    blockCategories.Constant.blocks.forEach(constBlock => {
+                        const varId = constBlock.varId;
+                        const variableName = constBlock.variableName || 'Costante';
+                        
+                        const block = {
+                            id: varId,
+                            name: variableName,
+                            blockType: 'Costante',
+                            position: { x: 0, y: 0, width: 80, height: 40 },
+                            parameters: {
+                                variableName: variableName,
+                                value: constBlock.value || '0'
+                            }
+                        };
+                        
+                        allBlocks.push(block);
+                        
+                        if (constBlock.destination) {
+                            constBlock.destination.forEach((dest, index) => {
+                                allConnections.push({
+                                    id: `${varId}_to_${dest.varId}_${index}`,
+                                    source: { blockId: varId, portId: 'output' },
+                                    target: { blockId: dest.varId, portId: 'input' }
+                                });
+                            });
+                        }
+                    });
+                }
+                
+                // Estrai terminatori
+                if (blockCategories.Terminator && blockCategories.Terminator.blocks) {
+                    blockCategories.Terminator.blocks.forEach(termBlock => {
+                        const varId = termBlock.varId;
+                        const variableName = termBlock.variableName || 'Terminatore';
+                        
+                        const block = {
+                            id: varId,
+                            name: variableName,
+                            blockType: 'Terminatore',
+                            position: { x: 0, y: 0, width: 60, height: 30 },
+                            parameters: {
+                                variableName: variableName
+                            }
+                        };
+                        
+                        allBlocks.push(block);
+                    });
+                }
+                
+                // Layout semplificato
+                this.calculateSimpleLayout(allBlocks, allConnections);
+                
+                return {
+                    name: metadata.subsystemName || 'Alstom Model',
+                    blocks: allBlocks,
+                    connections: allConnections
+                };
+            }
+            
+            static calculateSimpleLayout(blocks, connections) {
+                const LEVEL_WIDTH = 200;
+                const BLOCK_SPACING = 80;
+                let x = 50;
+                let y = 50;
+                
+                // Posiziona LibFrom e Costanti a sinistra
+                const inputBlocks = blocks.filter(b => 
+                    b.blockType === 'LibFrom' || b.blockType === 'Costante'
+                );
+                inputBlocks.forEach((block, index) => {
+                    block.position.x = x;
+                    block.position.y = y + (index * BLOCK_SPACING);
+                });
+                
+                // Posiziona operatori logici al centro
+                x += LEVEL_WIDTH;
+                const logicBlocks = blocks.filter(b => 
+                    b.blockType === 'Logical Operator'
+                );
+                logicBlocks.forEach((block, index) => {
+                    block.position.x = x;
+                    block.position.y = y + (index * BLOCK_SPACING);
+                });
+                
+                // Posiziona LibGoto e Terminatori a destra
+                x += LEVEL_WIDTH;
+                const outputBlocks = blocks.filter(b => 
+                    b.blockType === 'LibGoto' || b.blockType === 'Terminatore'
+                );
+                outputBlocks.forEach((block, index) => {
+                    block.position.x = x;
+                    block.position.y = y + (index * BLOCK_SPACING);
+                });
+            }
+        }
+
+        function testParser() {
+            try {
+                const jsonText = document.getElementById('jsonInput').value;
+                console.log('Testing parser with JSON:', jsonText);
+                
+                const jsonData = JSON.parse(jsonText);
+                console.log('JSON parsed successfully');
+                
+                const model = SimpleParser.parseAlstomFormat(jsonData);
+                console.log('Model parsed:', model);
+                
+                currentModel = model;
+                
+                document.getElementById('result').innerHTML = `
+                    <h3>Parsing Result:</h3>
+                    <p><strong>Model:</strong> ${model.name}</p>
+                    <p><strong>Blocks:</strong> ${model.blocks.length}</p>
+                    <p><strong>Connections:</strong> ${model.connections.length}</p>
+                    <h4>Blocks:</h4>
+                    <ul>
+                        ${model.blocks.map(b => `<li>${b.name} (${b.blockType}) - ID: ${b.id}</li>`).join('')}
+                    </ul>
+                    <h4>Connections:</h4>
+                    <ul>
+                        ${model.connections.map(c => `<li>${c.source.blockId} → ${c.target.blockId}</li>`).join('')}
+                    </ul>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        function renderChart() {
+            if (!currentModel) {
+                alert('Prima testa il parser');
+                return;
+            }
+
+            const svg = d3.select('#chart').html('').append('svg')
+                .attr('width', '100%')
+                .attr('height', '100%');
+
+            const blockColors = {
+                'LibFrom': '#E8F5E8',
+                'LibGoto': '#FFE0B2', 
+                'Costante': '#FFF9C4',
+                'Logical Operator': '#E1F5FE',
+                'Terminatore': '#FFCDD2'
+            };
+
+            // Disegna connessioni
+            svg.selectAll('.connection')
+                .data(currentModel.connections)
+                .enter()
+                .append('line')
+                .attr('class', 'connection')
+                .attr('x1', d => {
+                    const sourceBlock = currentModel.blocks.find(b => b.id === d.source.blockId);
+                    return sourceBlock ? sourceBlock.position.x + sourceBlock.position.width : 0;
+                })
+                .attr('y1', d => {
+                    const sourceBlock = currentModel.blocks.find(b => b.id === d.source.blockId);
+                    return sourceBlock ? sourceBlock.position.y + sourceBlock.position.height/2 : 0;
+                })
+                .attr('x2', d => {
+                    const targetBlock = currentModel.blocks.find(b => b.id === d.target.blockId);
+                    return targetBlock ? targetBlock.position.x : 0;
+                })
+                .attr('y2', d => {
+                    const targetBlock = currentModel.blocks.find(b => b.id === d.target.blockId);
+                    return targetBlock ? targetBlock.position.y + targetBlock.position.height/2 : 0;
+                })
+                .attr('stroke', '#666')
+                .attr('stroke-width', 2)
+                .attr('marker-end', 'url(#arrowhead)');
+
+            // Definisci marker per frecce
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 8)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#666');
+
+            // Disegna blocchi
+            const blocks = svg.selectAll('.block')
+                .data(currentModel.blocks)
+                .enter()
+                .append('g')
+                .attr('class', 'block')
+                .attr('transform', d => `translate(${d.position.x}, ${d.position.y})`);
+
+            blocks.append('rect')
+                .attr('width', d => d.position.width)
+                .attr('height', d => d.position.height)
+                .attr('fill', d => blockColors[d.blockType] || '#F0F0F0')
+                .attr('stroke', '#333')
+                .attr('stroke-width', 1)
+                .attr('rx', 4);
+
+            blocks.append('text')
+                .attr('x', d => d.position.width / 2)
+                .attr('y', d => d.position.height / 2)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('font-size', '10px')
+                .attr('font-family', 'Arial, sans-serif')
+                .text(d => d.name);
+        }
+    </script>
+</body>
+</html>

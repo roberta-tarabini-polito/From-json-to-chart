@@ -1,0 +1,31 @@
+{
+  "name": "simulink-json-to-chart",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "electron-main.js",
+  "scripts": {
+    "dev": "vite",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "tsc && vite build",
+    "electron:build": "npm run build && electron-builder",
+    "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.example.simulinkjson2chart",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "electron-main.js"]
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "electron": "^26.0.0",
+    "electron-builder": "^24.6.0",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "d3": "^7.8.5",
+    "@types/d3": "^7.4.3"
+  }
+}

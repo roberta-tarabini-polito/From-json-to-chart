@@ -1,0 +1,255 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+}
+
+#app {
+  max-width: 100%;
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+header h1 {
+  margin: 0 0 10px 0;
+  color: #fff;
+  font-size: 2.2em;
+  font-weight: 600;
+}
+
+header p {
+  margin: 0;
+  color: #e0e0e0;
+  font-size: 1.1em;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 20px;
+  height: calc(100vh - 200px);
+}
+
+.controls {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  overflow-y: auto;
+}
+
+.input-section h2,
+.options-section h3 {
+  color: #fff;
+  margin-top: 0;
+}
+
+.textarea-container {
+  margin: 15px 0;
+}
+
+.textarea-container label {
+  display: block;
+  color: #e0e0e0;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+#jsonInput {
+  width: 100%;
+  height: 200px;
+  padding: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+
+#jsonInput::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+#fileInput {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+#loadBtn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#loadBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.options-section {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.options-section label {
+  display: block;
+  color: #e0e0e0;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.options-section input[type="checkbox"] {
+  margin-right: 10px;
+  scale: 1.2;
+}
+
+.options-section input[type="range"] {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.chart-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+#chart {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+.block-details {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 250px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: none;
+  backdrop-filter: blur(10px);
+}
+
+.block-details h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.block-details .param {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.block-details .param strong {
+  color: #333;
+}
+
+/* Stili per i blocchi Simulink */
+.simulink-block {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.simulink-block:hover {
+  filter: brightness(1.1);
+  stroke-width: 2px;
+}
+
+.simulink-block.selected {
+  stroke: #ff6b35;
+  stroke-width: 3px;
+}
+
+.block-text {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.connection-line {
+  stroke: #333;
+  stroke-width: 2px;
+  fill: none;
+  marker-end: url(#arrowhead);
+}
+
+.port {
+  fill: #666;
+  stroke: #333;
+  stroke-width: 1px;
+}
+
+.port.input {
+  fill: #4CAF50;
+}
+
+.port.output {
+  fill: #f44336;
+}
+
+@media (max-width: 1200px) {
+  main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .controls {
+    height: auto;
+  }
+}

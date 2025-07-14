@@ -1,0 +1,1778 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulink JSON to Chart Converter</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      :root {
+        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        font-weight: 400;
+        color-scheme: light dark;
+        color: rgba(255, 255, 255, 0.87);
+        background-color: #242424;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      }
+
+      #app {
+        max-width: 100%;
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+      }
+
+      header h1 {
+        margin: 0 0 10px 0;
+        color: #fff;
+        font-size: 2.2em;
+        font-weight: 600;
+      }
+
+      header p {
+        margin: 0;
+        color: #e0e0e0;
+        font-size: 1.1em;
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 20px;
+        height: calc(100vh - 200px);
+      }
+
+      .controls {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        overflow-y: auto;
+      }
+
+      .input-section h2,
+      .options-section h3 {
+        color: #fff;
+        margin-top: 0;
+      }
+
+      .textarea-container {
+        margin: 15px 0;
+      }
+
+      .textarea-container label {
+        display: block;
+        color: #e0e0e0;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      #jsonInput {
+        width: 100%;
+        height: 200px;
+        padding: 12px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        resize: vertical;
+      }
+
+      #jsonInput::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      #fileInput {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+      }
+
+      #loadBtn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(45deg, #4CAF50, #45a049);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      #loadBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+      }
+
+      .options-section {
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .options-section label {
+        display: block;
+        color: #e0e0e0;
+        margin-bottom: 12px;
+        cursor: pointer;
+        font-weight: 500;
+      }
+
+      .options-section input[type="checkbox"] {
+        margin-right: 10px;
+        scale: 1.2;
+      }
+
+      .options-section input[type="range"] {
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      .chart-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      #chart {
+        width: 100%;
+        height: 100%;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: #fafafa;
+        overflow: hidden;
+      }
+
+      .block-details {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 250px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        display: none;
+        backdrop-filter: blur(10px);
+      }
+
+      .block-details h4 {
+        margin: 0 0 10px 0;
+        color: #333;
+        font-size: 16px;
+      }
+
+      .block-details .param {
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: #666;
+      }
+
+      .block-details .param strong {
+        color: #333;
+      }
+
+      /* Stili per i blocchi Simulink */
+      .simulink-block {
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .simulink-block:hover {
+        filter: brightness(1.1);
+        stroke-width: 2px;
+      }
+
+      .simulink-block.selected {
+        stroke: #ff6b35;
+        stroke-width: 3px;
+      }
+
+      .block-text {
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        text-anchor: middle;
+        dominant-baseline: central;
+        pointer-events: none;
+      }
+
+      .connection-line {
+        stroke: #333;
+        stroke-width: 2px;
+        fill: none;
+        marker-end: url(#arrowhead);
+      }
+
+      .port {
+        fill: #666;
+        stroke: #333;
+        stroke-width: 1px;
+      }
+
+      .port.input {
+        fill: #4CAF50;
+      }
+
+      .port.output {
+        fill: #f44336;
+      }
+
+      @media (max-width: 1200px) {
+        main {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+        }
+        
+        .controls {
+          height: auto;
+        }
+      }
+
+      .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        max-width: 400px;
+        z-index: 1000;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: all 0.3s ease;
+      }
+
+      .notification.success {
+        background-color: #4CAF50;
+      }
+
+      .notification.error {
+        background-color: #f44336;
+      }
+
+      .notification.warning {
+        background-color: #ff9800;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Convertitore JSON Simulink a Diagramma</h1>
+        <p>Carica un file JSON generato da modelli Simulink (.mdl) per visualizzare il diagramma di flusso</p>
+      </header>
+      
+      <main>
+        <div class="controls">
+          <div class="input-section">
+            <h2>Carica JSON</h2>
+            <input type="file" id="fileInput" accept=".json" />
+            <div class="textarea-container">
+              <label for="jsonInput">O incolla il JSON qui:</label>
+              <textarea id="jsonInput" placeholder='Incolla qui il JSON dei blocchi Simulink...'></textarea>
+            </div>
+            <button id="loadBtn">Carica e Visualizza</button>
+          </div>
+          
+          <div class="options-section">
+            <h3>Opzioni di Visualizzazione</h3>
+            <label>
+              <input type="checkbox" id="showParams" checked> Mostra parametri dei blocchi
+            </label>
+            <label>
+              <input type="checkbox" id="showPorts" checked> Mostra porte di ingresso/uscita
+            </label>
+            <label>
+              <input type="range" id="zoomSlider" min="0.1" max="2" step="0.1" value="1"> Zoom
+            </label>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <div id="chart"></div>
+          <div id="blockDetails" class="block-details"></div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // Simulink JSON to Chart Converter - Standalone Version
+      
+      // Tipi di blocchi Simulink comuni
+      const BLOCK_TYPES = {
+        CONSTANT: 'Constant',
+        STEP: 'Step',
+        RAMP: 'Ramp',
+        SINE_WAVE: 'Sine Wave',
+        PULSE_GENERATOR: 'Pulse Generator',
+        SIGNAL_GENERATOR: 'Signal Generator',
+        FROM_WORKSPACE: 'From Workspace',
+        SCOPE: 'Scope',
+        TO_WORKSPACE: 'To Workspace',
+        DISPLAY: 'Display',
+        SUM: 'Sum',
+        PRODUCT: 'Product',
+        GAIN: 'Gain',
+        ABS: 'Abs',
+        SQRT: 'Sqrt',
+        TRIGONOMETRIC: 'Trigonometric Function',
+        MATH_FUNCTION: 'Math Function',
+        INTEGRATOR: 'Integrator',
+        DERIVATIVE: 'Derivative',
+        TRANSFER_FUNCTION: 'Transfer Fcn',
+        STATE_SPACE: 'State-Space',
+        PID_CONTROLLER: 'PID Controller',
+        UNIT_DELAY: 'Unit Delay',
+        ZERO_ORDER_HOLD: 'Zero-Order Hold',
+        DISCRETE_INTEGRATOR: 'Discrete-Time Integrator',
+        MUX: 'Mux',
+        DEMUX: 'Demux',
+        SWITCH: 'Switch',
+        SELECTOR: 'Selector',
+        BUS_CREATOR: 'Bus Creator',
+        BUS_SELECTOR: 'Bus Selector',
+        LOGICAL_OPERATOR: 'Logical Operator',
+        RELATIONAL_OPERATOR: 'Relational Operator',
+        COMPARE_TO_CONSTANT: 'Compare To Constant',
+        SUBSYSTEM: 'Subsystem',
+        INPORT: 'Inport',
+        OUTPORT: 'Outport'
+      };
+
+      // Configurazioni per il rendering dei blocchi
+      const BLOCK_RENDER_CONFIGS = {
+        // Blocchi Alstom
+        'LibFrom': {
+          width: 120, height: 60, color: '#E8F5E8', shape: 'rectangle', showPorts: true
+        },
+        'LibGoto': {
+          width: 120, height: 60, color: '#FFE0B2', shape: 'rectangle', showPorts: true
+        },
+        'Variable': {
+          width: 120, height: 60, color: '#F3E5F5', shape: 'rectangle', showPorts: true
+        },
+        'Logical Operator': {
+          width: 80, height: 50, color: '#E1F5FE', shape: 'diamond', showPorts: true
+        },
+        'Terminatore': {
+          width: 60, height: 30, color: '#FFCDD2', shape: 'rectangle', showPorts: true
+        },
+        'Terminator': {
+          width: 60, height: 30, color: '#FFCDD2', shape: 'rectangle', showPorts: true
+        },
+        'Costante': {
+          width: 80, height: 40, color: '#FFF9C4', shape: 'rectangle', showPorts: true
+        },
+        'Constant': {
+          width: 80, height: 40, color: '#FFF9C4', shape: 'rectangle', showPorts: true
+        },
+        
+        // Blocchi Simulink standard
+        [BLOCK_TYPES.CONSTANT]: {
+          width: 60, height: 30, color: '#FFE0B2', shape: 'rectangle', showPorts: true
+        },
+        [BLOCK_TYPES.SUM]: {
+          width: 40, height: 40, color: '#E1F5FE', shape: 'circle', showPorts: true
+        },
+        [BLOCK_TYPES.GAIN]: {
+          width: 60, height: 30, color: '#F3E5F5', shape: 'triangle', showPorts: true
+        },
+        [BLOCK_TYPES.INTEGRATOR]: {
+          width: 60, height: 40, color: '#E8F5E8', shape: 'rectangle', showPorts: true
+        },
+        [BLOCK_TYPES.SCOPE]: {
+          width: 60, height: 40, color: '#FFF3E0', shape: 'rectangle', showPorts: true
+        },
+        [BLOCK_TYPES.SUBSYSTEM]: {
+          width: 80, height: 60, color: '#F5F5F5', shape: 'rectangle', showPorts: true
+        },
+        [BLOCK_TYPES.TRANSFER_FUNCTION]: {
+          width: 80, height: 40, color: '#E3F2FD', shape: 'rectangle', showPorts: true
+        },
+        [BLOCK_TYPES.PID_CONTROLLER]: {
+          width: 80, height: 60, color: '#FFF8E1', shape: 'rectangle', showPorts: true
+        },
+        [BLOCK_TYPES.STEP]: {
+          width: 60, height: 30, color: '#F1F8E9', shape: 'rectangle', showPorts: true
+        }
+      };
+
+      const DEFAULT_BLOCK_CONFIG = {
+        width: 60, height: 30, color: '#F0F0F0', shape: 'rectangle', showPorts: true
+      };
+
+      // Parser per JSON Simulink/Alstom
+      class SimulinkJSONParser {
+        static parseJSON(jsonData) {
+          // Formato Alstom MDL Debug Tool
+          if (jsonData.metadata && jsonData.blockCategories) {
+            return this.parseAlstomFormat(jsonData);
+          }
+          // Altri formati
+          else if (jsonData.model || jsonData.Model) {
+            return this.parseStandardFormat(jsonData);
+          } else if (jsonData.blocks || jsonData.Blocks) {
+            return this.parseBlocksFormat(jsonData);
+          } else if (Array.isArray(jsonData)) {
+            return this.parseArrayFormat(jsonData);
+          } else if (jsonData.systems || jsonData.Systems) {
+            return this.parseSystemsFormat(jsonData);
+          } else {
+            return this.parseGenericFormat(jsonData);
+          }
+        }
+
+        static parseAlstomFormat(data) {
+          const metadata = data.metadata;
+          const blockCategories = data.blockCategories;
+          
+          const allBlocks = [];
+          const allConnections = [];
+          
+          // Estrai blocchi variabili (LibFrom e LibGoto)
+          if (blockCategories.Variable && blockCategories.Variable.blocks) {
+            const variableBlocks = this.extractAlstomVariables(blockCategories.Variable.blocks);
+            allBlocks.push(...variableBlocks.blocks);
+            allConnections.push(...variableBlocks.connections);
+          }
+          
+          // Estrai operatori logici
+          if (blockCategories['Logic Rule'] && blockCategories['Logic Rule'].blocks) {
+            const logicBlocks = this.extractAlstomLogicRules(blockCategories['Logic Rule'].blocks);
+            allBlocks.push(...logicBlocks.blocks);
+            allConnections.push(...logicBlocks.connections);
+          }
+          
+          // Estrai terminatori
+          if (blockCategories['Terminator'] && blockCategories['Terminator'].blocks) {
+            const terminatorBlocks = this.extractAlstomTerminators(blockCategories['Terminator'].blocks);
+            allBlocks.push(...terminatorBlocks.blocks);
+            allConnections.push(...terminatorBlocks.connections);
+          }
+          
+          // Estrai costanti
+          if (blockCategories['Constant'] && blockCategories['Constant'].blocks) {
+            const constantBlocks = this.extractAlstomConstants(blockCategories['Constant'].blocks);
+            allBlocks.push(...constantBlocks.blocks);
+            allConnections.push(...constantBlocks.connections);
+          }
+          
+          // Calcola layout gerarchico che rispetta il flusso
+          this.calculateHierarchicalLayout(allBlocks, allConnections);
+          
+          return {
+            name: metadata.subsystemName || metadata.sourceFile || 'Alstom Model',
+            version: metadata.version,
+            blocks: allBlocks,
+            connections: allConnections,
+            parameters: {},
+            metadata: {
+              created: metadata.exportedBy,
+              modified: new Date().toISOString(),
+              simulinkVersion: metadata.version
+            }
+          };
+        }
+
+        static extractAlstomVariables(variableBlocks) {
+          const blocks = [];
+          const connections = [];
+          
+          variableBlocks.forEach((varBlock) => {
+            const varId = varBlock.varId;
+            const variableName = varBlock.variableName;
+            const description = varBlock.description;
+            
+            // Determina il tipo di blocco
+            let blockType = 'Variable';
+            if (varId.includes('LibFrom') || varId.includes('Serial From')) {
+              blockType = 'LibFrom';
+            } else if (varId.includes('LibGoto') || varId.includes('Serial Goto')) {
+              blockType = 'LibGoto';
+            }
+            
+            const block = {
+              id: varId,
+              name: variableName || varId,
+              blockType: blockType,
+              position: { x: 0, y: 0, width: 120, height: 60 }, // Posizione temporanea
+              parameters: {
+                variableName: variableName,
+                description: description
+              }
+            };
+            
+            blocks.push(block);
+            
+            // Crea connessioni per i destination
+            if (varBlock.destination && Array.isArray(varBlock.destination)) {
+              varBlock.destination.forEach((dest, destIndex) => {
+                const connection = {
+                  id: `${varId}_to_${dest.varId}_${destIndex}`,
+                  source: {
+                    blockId: varId,
+                    portId: 'output'
+                  },
+                  target: {
+                    blockId: dest.varId,
+                    portId: 'input'
+                  }
+                };
+                connections.push(connection);
+              });
+            }
+          });
+          
+          return { blocks, connections };
+        }
+
+        static extractAlstomLogicRules(logicBlocks) {
+          const blocks = [];
+          const connections = [];
+          
+          logicBlocks.forEach((logicBlock) => {
+            const varId = logicBlock.varId;
+            const opField = logicBlock.opField; // AND, OR, NOT, etc.
+            
+            const block = {
+              id: varId,
+              name: opField || 'Logic',
+              blockType: 'Logical Operator',
+              position: { x: 0, y: 0, width: 80, height: 50 }, // Posizione temporanea
+              parameters: {
+                operator: opField,
+                opValue: logicBlock.opValue
+              }
+            };
+            
+            blocks.push(block);
+            
+            // Crea connessioni per i destination
+            if (logicBlock.destination && Array.isArray(logicBlock.destination)) {
+              logicBlock.destination.forEach((dest, destIndex) => {
+                const connection = {
+                  id: `${varId}_to_${dest.varId}_${destIndex}`,
+                  source: {
+                    blockId: varId,
+                    portId: 'output'
+                  },
+                  target: {
+                    blockId: dest.varId,
+                    portId: 'input'
+                  }
+                };
+                connections.push(connection);
+              });
+            }
+          });
+          
+          return { blocks, connections };
+        }
+
+        static extractAlstomTerminators(terminatorBlocks) {
+          const blocks = [];
+          const connections = [];
+          
+          terminatorBlocks.forEach((termBlock) => {
+            const varId = termBlock.varId;
+            const variableName = termBlock.variableName || 'Terminator';
+            const description = termBlock.description;
+            
+            const block = {
+              id: varId,
+              name: variableName,
+              blockType: 'Terminatore',
+              position: { x: 0, y: 0, width: 60, height: 30 }, // Posizione temporanea
+              parameters: {
+                variableName: variableName,
+                description: description
+              }
+            };
+            
+            blocks.push(block);
+            
+            // I terminatori tipicamente non hanno destination (sono sink)
+            // ma possono averne se specificato nel JSON
+            if (termBlock.destination && Array.isArray(termBlock.destination)) {
+              termBlock.destination.forEach((dest, destIndex) => {
+                const connection = {
+                  id: `${varId}_to_${dest.varId}_${destIndex}`,
+                  source: {
+                    blockId: varId,
+                    portId: 'output'
+                  },
+                  target: {
+                    blockId: dest.varId,
+                    portId: 'input'
+                  }
+                };
+                connections.push(connection);
+              });
+            }
+          });
+          
+          return { blocks, connections };
+        }
+
+        static extractAlstomConstants(constantBlocks) {
+          const blocks = [];
+          const connections = [];
+          
+          constantBlocks.forEach((constBlock) => {
+            const varId = constBlock.varId;
+            const variableName = constBlock.variableName || 'Costante';
+            const description = constBlock.description;
+            const value = constBlock.value || constBlock.constantValue || '0';
+            
+            const block = {
+              id: varId,
+              name: variableName,
+              blockType: 'Costante',
+              position: { x: 0, y: 0, width: 80, height: 40 }, // Posizione temporanea
+              parameters: {
+                variableName: variableName,
+                description: description,
+                value: value,
+                constantValue: value
+              }
+            };
+            
+            blocks.push(block);
+            
+            // Crea connessioni per i destination
+            if (constBlock.destination && Array.isArray(constBlock.destination)) {
+              constBlock.destination.forEach((dest, destIndex) => {
+                const connection = {
+                  id: `${varId}_to_${dest.varId}_${destIndex}`,
+                  source: {
+                    blockId: varId,
+                    portId: 'output'
+                  },
+                  target: {
+                    blockId: dest.varId,
+                    portId: 'input'
+                  }
+                };
+                connections.push(connection);
+              });
+            }
+          });
+          
+          return { blocks, connections };
+        }
+
+        static parseStandardFormat(data) {
+          const modelData = data.model || data.Model;
+          return {
+            name: modelData.name || 'Simulink Model',
+            version: modelData.version,
+            blocks: this.extractBlocks(modelData.blocks || modelData.Blocks || []),
+            connections: this.extractConnections(modelData.connections || modelData.lines || modelData.Lines || []),
+            parameters: modelData.parameters || modelData.Parameters,
+            metadata: {
+              created: modelData.created,
+              modified: modelData.modified,
+              simulinkVersion: modelData.simulinkVersion
+            }
+          };
+        }
+
+        static parseBlocksFormat(data) {
+          const blocks = data.blocks || data.Blocks;
+          const connections = data.connections || data.lines || data.Lines || [];
+          return {
+            name: data.name || 'Simulink Model',
+            blocks: this.extractBlocks(blocks),
+            connections: this.extractConnections(connections),
+            parameters: data.parameters || data.Parameters
+          };
+        }
+
+        static parseArrayFormat(data) {
+          return {
+            name: 'Simulink Model',
+            blocks: this.extractBlocks(data),
+            connections: []
+          };
+        }
+
+        static parseSystemsFormat(data) {
+          const systems = data.systems || data.Systems;
+          const mainSystem = Array.isArray(systems) ? systems[0] : systems;
+          return {
+            name: mainSystem.name || 'Simulink Model',
+            blocks: this.extractBlocks(mainSystem.blocks || mainSystem.Blocks || []),
+            connections: this.extractConnections(mainSystem.connections || mainSystem.lines || [])
+          };
+        }
+
+        static parseGenericFormat(data) {
+          const blocks = this.findBlocksInObject(data);
+          const connections = this.findConnectionsInObject(data);
+          return {
+            name: data.name || data.modelName || 'Simulink Model',
+            blocks: this.extractBlocks(blocks),
+            connections: this.extractConnections(connections)
+          };
+        }
+
+        static extractBlocks(blocksData) {
+          if (!Array.isArray(blocksData)) return [];
+          
+          return blocksData.map((block, index) => {
+            const id = block.id || block.ID || block.handle || block.Handle || `block_${index}`;
+            const name = block.name || block.Name || block.blockName || `Block ${index}`;
+            const blockType = block.blockType || block.BlockType || block.type || block.Type || 'Unknown';
+            
+            let position = { x: 0, y: 0, width: 60, height: 30 };
+            
+            if (block.position) {
+              if (Array.isArray(block.position) && block.position.length >= 4) {
+                position = {
+                  x: block.position[0],
+                  y: block.position[1],
+                  width: block.position[2] - block.position[0],
+                  height: block.position[3] - block.position[1]
+                };
+              } else if (typeof block.position === 'object') {
+                position = {
+                  x: block.position.x || block.position.X || 0,
+                  y: block.position.y || block.position.Y || 0,
+                  width: block.position.width || block.position.Width || 60,
+                  height: block.position.height || block.position.Height || 30
+                };
+              }
+            } else if (block.Position) {
+              if (Array.isArray(block.Position) && block.Position.length >= 4) {
+                position = {
+                  x: block.Position[0],
+                  y: block.Position[1],
+                  width: block.Position[2] - block.Position[0],
+                  height: block.Position[3] - block.Position[1]
+                };
+              }
+            }
+
+            const parameters = {};
+            const systemProps = ['id', 'ID', 'name', 'Name', 'blockType', 'BlockType', 'position', 'Position', 'inputs', 'outputs', 'parent', 'children'];
+            Object.keys(block).forEach(key => {
+              if (!systemProps.includes(key)) {
+                parameters[key] = block[key];
+              }
+            });
+
+            const inputs = this.extractPorts(block.inputs || block.Inputs || [], 'input');
+            const outputs = this.extractPorts(block.outputs || block.Outputs || [], 'output');
+
+            return {
+              id,
+              name,
+              blockType,
+              position,
+              parameters,
+              inputs: inputs.length > 0 ? inputs : undefined,
+              outputs: outputs.length > 0 ? outputs : undefined,
+              parent: block.parent || block.Parent,
+              children: block.children || block.Children
+            };
+          });
+        }
+
+        static extractPorts(portsData, type) {
+          if (!Array.isArray(portsData)) return [];
+          return portsData.map((port, index) => ({
+            id: port.id || port.ID || `${type}_${index}`,
+            type,
+            name: port.name || port.Name,
+            dataType: port.dataType || port.DataType,
+            dimensions: port.dimensions || port.Dimensions
+          }));
+        }
+
+        static extractConnections(connectionsData) {
+          if (!Array.isArray(connectionsData)) return [];
+          
+          return connectionsData.map((conn, index) => {
+            const id = conn.id || conn.ID || `connection_${index}`;
+            
+            let source, target;
+            
+            if (conn.source && conn.target) {
+              source = {
+                blockId: conn.source.blockId || conn.source.block || conn.source.Block,
+                portId: conn.source.portId || conn.source.port || conn.source.Port || 'output',
+                portIndex: conn.source.portIndex || conn.source.portIndex
+              };
+              target = {
+                blockId: conn.target.blockId || conn.target.block || conn.target.Block,
+                portId: conn.target.portId || conn.target.port || conn.target.Port || 'input',
+                portIndex: conn.target.portIndex || conn.target.portIndex
+              };
+            } else if (conn.from && conn.to) {
+              source = {
+                blockId: conn.from.blockId || conn.from.block || conn.from,
+                portId: conn.from.portId || conn.from.port || 'output',
+                portIndex: conn.from.portIndex
+              };
+              target = {
+                blockId: conn.to.blockId || conn.to.block || conn.to,
+                portId: conn.to.portId || conn.to.port || 'input',
+                portIndex: conn.to.portIndex
+              };
+            } else {
+              const keys = Object.keys(conn);
+              source = {
+                blockId: conn[keys[0]] || `unknown_source_${index}`,
+                portId: 'output'
+              };
+              target = {
+                blockId: conn[keys[1]] || `unknown_target_${index}`,
+                portId: 'input'
+              };
+            }
+
+            return {
+              id,
+              source,
+              target,
+              signal: conn.signal || conn.Signal,
+              waypoints: conn.waypoints || conn.Waypoints
+            };
+          });
+        }
+
+        static findBlocksInObject(obj) {
+          const blocks = [];
+          const searchKeys = ['blocks', 'Blocks', 'block', 'Block', 'components', 'Components'];
+          
+          for (const key of searchKeys) {
+            if (obj[key] && Array.isArray(obj[key])) {
+              blocks.push(...obj[key]);
+            }
+          }
+          
+          Object.values(obj).forEach(value => {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              blocks.push(...this.findBlocksInObject(value));
+            }
+          });
+          
+          return blocks;
+        }
+
+        static findConnectionsInObject(obj) {
+          const connections = [];
+          const searchKeys = ['connections', 'Connections', 'lines', 'Lines', 'edges', 'Edges'];
+          
+          for (const key of searchKeys) {
+            if (obj[key] && Array.isArray(obj[key])) {
+              connections.push(...obj[key]);
+            }
+          }
+          
+          Object.values(obj).forEach(value => {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              connections.push(...this.findConnectionsInObject(value));
+            }
+          });
+          
+          return connections;
+        }
+
+        static validateModel(model) {
+          const errors = [];
+          
+          if (!model.name) {
+            errors.push('Il modello deve avere un nome');
+          }
+          
+          if (!model.blocks || model.blocks.length === 0) {
+            errors.push('Il modello deve contenere almeno un blocco');
+          }
+          
+          const blockIds = new Set();
+          model.blocks.forEach(block => {
+            if (blockIds.has(block.id)) {
+              errors.push(`ID blocco duplicato: ${block.id}`);
+            }
+            blockIds.add(block.id);
+          });
+          
+          model.connections.forEach(conn => {
+            if (!blockIds.has(conn.source.blockId)) {
+              errors.push(`Connessione fa riferimento a blocco source inesistente: ${conn.source.blockId}`);
+            }
+            if (!blockIds.has(conn.target.blockId)) {
+              errors.push(`Connessione fa riferimento a blocco target inesistente: ${conn.target.blockId}`);
+            }
+          });
+          
+          return {
+            isValid: errors.length === 0,
+            errors
+          };
+        }
+
+        // Calcola un layout gerarchico che rispetta il flusso logico
+        static calculateHierarchicalLayout(blocks, connections) {
+          // Crea un grafo delle dipendenze
+          const graph = new Map();
+          
+          // Inizializza il grafo
+          blocks.forEach(block => {
+            graph.set(block.id, {
+              block,
+              inputs: [],
+              outputs: [],
+              level: -1
+            });
+          });
+          
+          // Popola le connessioni
+          connections.forEach(conn => {
+            const sourceNode = graph.get(conn.source.blockId);
+            const targetNode = graph.get(conn.target.blockId);
+            
+            if (sourceNode && targetNode) {
+              sourceNode.outputs.push(conn.target.blockId);
+              targetNode.inputs.push(conn.source.blockId);
+            }
+          });
+          
+          // Trova tutti i nodi sorgente (senza input)
+          const sourceNodes = Array.from(graph.values())
+            .filter(node => node.inputs.length === 0)
+            .map(node => node.block.id);
+          
+          // Assegna livelli partendo dalle sorgenti
+          const visited = new Set();
+          const visiting = new Set();
+          
+          const assignLevel = (nodeId, level) => {
+            const node = graph.get(nodeId);
+            if (!node || visited.has(nodeId)) return;
+            
+            if (visiting.has(nodeId)) {
+              // Ciclo rilevato, interrompi
+              return;
+            }
+            
+            visiting.add(nodeId);
+            node.level = Math.max(node.level, level);
+            
+            // Assegna livelli ai nodi di output
+            node.outputs.forEach(outputId => {
+              assignLevel(outputId, level + 1);
+            });
+            
+            visiting.delete(nodeId);
+            visited.add(nodeId);
+          };
+          
+          // Inizia dalle sorgenti
+          sourceNodes.forEach(nodeId => {
+            assignLevel(nodeId, 0);
+          });
+          
+          // Gestisci nodi orfani (non raggiunti)
+          let orphanLevel = 0;
+          graph.forEach((node) => {
+            if (node.level === -1) {
+              node.level = orphanLevel;
+              orphanLevel++;
+            }
+          });
+          
+          // Raggruppa per livello
+          const levelGroups = new Map();
+          graph.forEach((node) => {
+            const level = node.level;
+            if (!levelGroups.has(level)) {
+              levelGroups.set(level, []);
+            }
+            levelGroups.get(level).push(node.block.id);
+          });
+          
+          // Calcola posizioni finali
+          const LEVEL_WIDTH = 200;  // Spazio tra livelli
+          const BLOCK_SPACING = 80; // Spazio tra blocchi nello stesso livello
+          const START_X = 50;
+          const START_Y = 50;
+          
+          Array.from(levelGroups.keys()).sort((a, b) => a - b).forEach(level => {
+            const nodesInLevel = levelGroups.get(level);
+            const x = START_X + (level * LEVEL_WIDTH);
+            
+            // Separa per tipo di blocco
+            const libFromNodes = nodesInLevel.filter(id => {
+              const block = blocks.find(b => b.id === id);
+              return block?.blockType === 'LibFrom';
+            });
+            
+            const constantNodes = nodesInLevel.filter(id => {
+              const block = blocks.find(b => b.id === id);
+              return block?.blockType === 'Costante' || block?.blockType === 'Constant';
+            });
+            
+            const logicNodes = nodesInLevel.filter(id => {
+              const block = blocks.find(b => b.id === id);
+              return block?.blockType === 'Logical Operator';
+            });
+            
+            const libGotoNodes = nodesInLevel.filter(id => {
+              const block = blocks.find(b => b.id === id);
+              return block?.blockType === 'LibGoto';
+            });
+            
+            const terminatorNodes = nodesInLevel.filter(id => {
+              const block = blocks.find(b => b.id === id);
+              return block?.blockType === 'Terminatore' || block?.blockType === 'Terminator';
+            });
+            
+            const libGotoNodes = nodesInLevel.filter(id => {
+              const block = blocks.find(b => b.id === id);
+              return block?.blockType === 'LibGoto';
+            });
+            
+            let currentY = START_Y;
+            
+            // Posiziona LibFrom e Costanti in alto (input sources)
+            const inputNodes = [...libFromNodes, ...constantNodes];
+            inputNodes.forEach((nodeId, index) => {
+              const block = blocks.find(b => b.id === nodeId);
+              if (block) {
+                block.position.x = x;
+                block.position.y = currentY + (index * BLOCK_SPACING);
+              }
+            });
+            
+            if (inputNodes.length > 0) {
+              currentY += inputNodes.length * BLOCK_SPACING + 50;
+            }
+            
+            // Posiziona operatori logici al centro
+            logicNodes.forEach((nodeId, index) => {
+              const block = blocks.find(b => b.id === nodeId);
+              if (block) {
+                block.position.x = x;
+                block.position.y = currentY + (index * BLOCK_SPACING);
+              }
+            });
+            
+            if (logicNodes.length > 0) {
+              currentY += logicNodes.length * BLOCK_SPACING + 50;
+            }
+            
+            // Posiziona LibGoto e Terminatori in basso (output sinks)
+            const outputNodes = [...libGotoNodes, ...terminatorNodes];
+            outputNodes.forEach((nodeId, index) => {
+              const block = blocks.find(b => b.id === nodeId);
+              if (block) {
+                block.position.x = x;
+                block.position.y = currentY + (index * BLOCK_SPACING);
+              }
+            });
+          });
+        }
+      }
+
+      // Classe per rendering e visualizzazione
+      class SimulinkRenderer {
+          constructor(containerId) {
+            this.container = d3.select(`#${containerId}`);
+            this.model = null;
+            this.selectedBlock = null;
+            this.options = {
+              showParameters: true,
+              showPorts: true,
+              zoomLevel: 1
+            };
+            this.initializeSVG();
+            this.setupZoom();
+          }
+
+          initializeSVG() {
+            this.container.select('svg').remove();
+            
+            const svg = this.container
+              .append('svg')
+              .attr('width', '100%')
+              .attr('height', '100%');
+
+            const defs = svg.append('defs');
+            
+            defs.append('marker')
+              .attr('id', 'arrowhead')
+              .attr('viewBox', '0 -5 10 10')
+              .attr('refX', 8)
+              .attr('refY', 0)
+              .attr('markerWidth', 6)
+              .attr('markerHeight', 6)
+              .attr('orient', 'auto')
+              .append('path')
+              .attr('d', 'M0,-5L10,0L0,5')
+              .attr('fill', '#333');
+
+            this.svg = svg.append('g').attr('class', 'main-group');
+          }
+
+          setupZoom() {
+            this.zoom = d3.zoom()
+              .scaleExtent([0.1, 5])
+              .on('zoom', (event) => {
+                this.svg.attr('transform', event.transform);
+              });
+
+            this.container.select('svg').call(this.zoom);
+          }
+
+          setOptions(options) {
+            this.options = { ...this.options, ...options };
+            if (this.model) {
+              this.render(this.model);
+            }
+          }
+
+          render(model) {
+            this.model = model;
+            this.clearCanvas();
+            this.calculateLayout();
+            this.renderConnections();
+            this.renderBlocks();
+            this.centerView();
+          }
+
+          clearCanvas() {
+            this.svg.selectAll('*').remove();
+          }
+
+          calculateLayout() {
+            if (!this.model) return;
+            
+            const blocksWithoutPosition = this.model.blocks.filter(block => 
+              !block.position || (block.position.x === 0 && block.position.y === 0)
+            );
+            
+            if (blocksWithoutPosition.length > 0) {
+              this.applyForceLayout();
+            }
+          }
+
+          applyForceLayout() {
+            if (!this.model) return;
+            
+            const blocks = this.model.blocks;
+            const connections = this.model.connections;
+            
+            const nodes = blocks.map(block => ({
+              id: block.id,
+              block,
+              x: block.position.x || Math.random() * 800,
+              y: block.position.y || Math.random() * 600
+            }));
+            
+            const links = connections.map(conn => ({
+              source: conn.source.blockId,
+              target: conn.target.blockId
+            }));
+            
+            const simulation = d3.forceSimulation(nodes)
+              .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+              .force('charge', d3.forceManyBody().strength(-300))
+              .force('center', d3.forceCenter(400, 300))
+              .force('collision', d3.forceCollide().radius(50));
+            
+            for (let i = 0; i < 300; i++) {
+              simulation.tick();
+            }
+            
+            nodes.forEach(node => {
+              const block = blocks.find(b => b.id === node.id);
+              if (block) {
+                block.position.x = node.x;
+                block.position.y = node.y;
+              }
+            });
+          }
+
+          renderBlocks() {
+            if (!this.model) return;
+            
+            const blocksGroup = this.svg.append('g').attr('class', 'blocks');
+            
+            const blockSelection = blocksGroup
+              .selectAll('.block')
+              .data(this.model.blocks)
+              .enter()
+              .append('g')
+              .attr('class', 'block simulink-block')
+              .attr('transform', d => `translate(${d.position.x}, ${d.position.y})`)
+              .on('click', (event, d) => this.selectBlock(d))
+              .on('mouseover', (event, d) => this.showBlockTooltip(event, d))
+              .on('mouseout', () => this.hideBlockTooltip());
+
+            blockSelection.each((d, i, nodes) => {
+              const element = d3.select(nodes[i]);
+              this.renderBlockShape(element, d);
+            });
+
+            blockSelection.append('text')
+              .attr('class', 'block-text')
+              .attr('x', d => (d.position.width || 60) / 2)
+              .attr('y', d => (d.position.height || 30) / 2)
+              .text(d => this.getBlockDisplayText(d))
+              .style('font-size', '10px')
+              .style('text-anchor', 'middle')
+              .style('dominant-baseline', 'central');
+
+            if (this.options.showPorts) {
+              blockSelection.each((d, i, nodes) => {
+                const element = d3.select(nodes[i]);
+                this.renderBlockPorts(element, d);
+              });
+            }
+          }
+
+          renderBlockShape(element, block) {
+            const config = this.getBlockConfig(block.blockType);
+            const width = block.position.width || config.width;
+            const height = block.position.height || config.height;
+            
+            switch (config.shape) {
+              case 'circle':
+                element.append('circle')
+                  .attr('cx', width / 2)
+                  .attr('cy', height / 2)
+                  .attr('r', Math.min(width, height) / 2)
+                  .attr('fill', config.color)
+                  .attr('stroke', '#333')
+                  .attr('stroke-width', 1);
+                break;
+                
+              case 'diamond':
+                const points = [
+                  [width / 2, 0],
+                  [width, height / 2],
+                  [width / 2, height],
+                  [0, height / 2]
+                ].map(p => p.join(',')).join(' ');
+                
+                element.append('polygon')
+                  .attr('points', points)
+                  .attr('fill', config.color)
+                  .attr('stroke', '#333')
+                  .attr('stroke-width', 1);
+                break;
+                
+              case 'triangle':
+                const trianglePoints = [
+                  [0, height],
+                  [width / 2, 0],
+                  [width, height]
+                ].map(p => p.join(',')).join(' ');
+                
+                element.append('polygon')
+                  .attr('points', trianglePoints)
+                  .attr('fill', config.color)
+                  .attr('stroke', '#333')
+                  .attr('stroke-width', 1);
+                break;
+                
+              default:
+                element.append('rect')
+                  .attr('width', width)
+                  .attr('height', height)
+                  .attr('fill', config.color)
+                  .attr('stroke', '#333')
+                  .attr('stroke-width', 1)
+                  .attr('rx', 4);
+                break;
+            }
+          }
+
+          renderBlockPorts(element, block) {
+            const width = block.position.width || 60;
+            const height = block.position.height || 30;
+            
+            if (block.inputs && block.inputs.length > 0) {
+              block.inputs.forEach((port, index) => {
+                const y = height * (index + 1) / (block.inputs.length + 1);
+                element.append('circle')
+                  .attr('class', 'port input')
+                  .attr('cx', -3)
+                  .attr('cy', y)
+                  .attr('r', 3);
+              });
+            } else {
+              element.append('circle')
+                .attr('class', 'port input')
+                .attr('cx', -3)
+                .attr('cy', height / 2)
+                .attr('r', 3);
+            }
+            
+            if (block.outputs && block.outputs.length > 0) {
+              block.outputs.forEach((port, index) => {
+                const y = height * (index + 1) / (block.outputs.length + 1);
+                element.append('circle')
+                  .attr('class', 'port output')
+                  .attr('cx', width + 3)
+                  .attr('cy', y)
+                  .attr('r', 3);
+              });
+            } else {
+              element.append('circle')
+                .attr('class', 'port output')
+                .attr('cx', width + 3)
+                .attr('cy', height / 2)
+                .attr('r', 3);
+            }
+          }
+
+          renderConnections() {
+            if (!this.model) return;
+            
+            const connectionsGroup = this.svg.append('g').attr('class', 'connections');
+            
+            connectionsGroup
+              .selectAll('.connection')
+              .data(this.model.connections)
+              .enter()
+              .append('path')
+              .attr('class', 'connection connection-line')
+              .attr('d', d => this.calculateConnectionPath(d))
+              .on('mouseover', (event, d) => this.showConnectionTooltip(event, d))
+              .on('mouseout', () => this.hideConnectionTooltip());
+          }
+
+          calculateConnectionPath(connection) {
+            if (!this.model) return '';
+            
+            const sourceBlock = this.model.blocks.find(b => b.id === connection.source.blockId);
+            const targetBlock = this.model.blocks.find(b => b.id === connection.target.blockId);
+            
+            if (!sourceBlock || !targetBlock) return '';
+            
+            const sourceX = sourceBlock.position.x + (sourceBlock.position.width || 60);
+            const sourceY = sourceBlock.position.y + (sourceBlock.position.height || 30) / 2;
+            
+            const targetX = targetBlock.position.x;
+            const targetY = targetBlock.position.y + (targetBlock.position.height || 30) / 2;
+            
+            if (connection.waypoints && connection.waypoints.length > 0) {
+              let path = `M ${sourceX} ${sourceY}`;
+              connection.waypoints.forEach(point => {
+                path += ` L ${point.x} ${point.y}`;
+              });
+              path += ` L ${targetX} ${targetY}`;
+              return path;
+            }
+            
+            const midX = (sourceX + targetX) / 2;
+            return `M ${sourceX} ${sourceY} Q ${midX} ${sourceY} ${midX} ${(sourceY + targetY) / 2} Q ${midX} ${targetY} ${targetX} ${targetY}`;
+          }
+
+          getBlockConfig(blockType) {
+            return BLOCK_RENDER_CONFIGS[blockType] || DEFAULT_BLOCK_CONFIG;
+          }
+
+          getBlockDisplayText(block) {
+            if (block.name !== block.blockType) {
+              return block.name;
+            }
+            return block.blockType;
+          }
+
+          selectBlock(block) {
+            this.svg.selectAll('.simulink-block').classed('selected', false);
+            
+            this.svg.selectAll('.simulink-block')
+              .filter(d => d.id === block.id)
+              .classed('selected', true);
+            
+            this.selectedBlock = block;
+            this.showBlockDetails(block);
+          }
+
+          showBlockDetails(block) {
+            const detailsDiv = d3.select('#blockDetails');
+            detailsDiv.style('display', 'block');
+            
+            let html = `<h4>${block.name}</h4>`;
+            html += `<div class="param"><strong>Tipo:</strong> ${block.blockType}</div>`;
+            html += `<div class="param"><strong>ID:</strong> ${block.id}</div>`;
+            
+            if (block.parameters && Object.keys(block.parameters).length > 0) {
+              html += '<hr><strong>Parametri:</strong>';
+              Object.entries(block.parameters).forEach(([key, value]) => {
+                html += `<div class="param"><strong>${key}:</strong> ${JSON.stringify(value)}</div>`;
+              });
+            }
+            
+            if (block.inputs && block.inputs.length > 0) {
+              html += '<hr><strong>Input:</strong>';
+              block.inputs.forEach(input => {
+                html += `<div class="param">• ${input.name || input.id} (${input.dataType || 'auto'})</div>`;
+              });
+            }
+            
+            if (block.outputs && block.outputs.length > 0) {
+              html += '<hr><strong>Output:</strong>';
+              block.outputs.forEach(output => {
+                html += `<div class="param">• ${output.name || output.id} (${output.dataType || 'auto'})</div>`;
+              });
+            }
+            
+            detailsDiv.html(html);
+          }
+
+          showBlockTooltip(event, block) {
+            // Implementa tooltip se necessario
+          }
+
+          hideBlockTooltip() {
+            // Implementa nascondere tooltip se necessario
+          }
+
+          showConnectionTooltip(event, connection) {
+            // Implementa tooltip per connessioni se necessario
+          }
+
+          hideConnectionTooltip() {
+            // Implementa nascondere tooltip per connessioni se necessario
+          }
+
+          centerView() {
+            if (!this.model || this.model.blocks.length === 0) return;
+            
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            
+            this.model.blocks.forEach(block => {
+              const x = block.position.x;
+              const y = block.position.y;
+              const width = block.position.width || 60;
+              const height = block.position.height || 30;
+              
+              minX = Math.min(minX, x);
+              minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x + width);
+              maxY = Math.max(maxY, y + height);
+            });
+            
+            const padding = 50;
+            minX -= padding;
+            minY -= padding;
+            maxX += padding;
+            maxY += padding;
+            
+            const contentWidth = maxX - minX;
+            const contentHeight = maxY - minY;
+            
+            const containerNode = this.container.node();
+            const containerWidth = containerNode.clientWidth;
+            const containerHeight = containerNode.clientHeight;
+            
+            const scaleX = containerWidth / contentWidth;
+            const scaleY = containerHeight / contentHeight;
+            const scale = Math.min(scaleX, scaleY, 1);
+            
+            const translateX = (containerWidth - contentWidth * scale) / 2 - minX * scale;
+            const translateY = (containerHeight - contentHeight * scale) / 2 - minY * scale;
+            
+            const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
+            this.container.select('svg').call(this.zoom.transform, transform);
+          }
+
+          setZoom(scale) {
+            const currentTransform = d3.zoomTransform(this.container.select('svg').node());
+            const newTransform = currentTransform.scale(scale / currentTransform.k);
+            this.container.select('svg').call(this.zoom.transform, newTransform);
+          }
+
+          exportAsSVG() {
+            return this.container.select('svg').node()?.outerHTML || '';
+          }
+        }
+
+        // Applicazione principale
+        class SimulinkJSONToChartApp {
+          constructor() {
+            this.renderer = new SimulinkRenderer('chart');
+            this.currentModel = null;
+            this.initializeEventListeners();
+            this.showSampleData();
+          }
+
+          initializeEventListeners() {
+            const fileInput = document.getElementById('fileInput');
+            fileInput?.addEventListener('change', (event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                this.loadFromFile(file);
+              }
+            });
+
+            const loadBtn = document.getElementById('loadBtn');
+            loadBtn?.addEventListener('click', () => {
+              console.log('Load button clicked');
+              const jsonInput = document.getElementById('jsonInput');
+              const jsonText = jsonInput.value.trim();
+              console.log('JSON text length:', jsonText.length);
+              if (jsonText) {
+                console.log('Calling loadFromJSON...');
+                this.loadFromJSON(jsonText);
+              } else {
+                console.log('No JSON text provided');
+                alert('Inserisci del testo JSON nell\'area di testo');
+              }
+            });
+
+            const showParams = document.getElementById('showParams');
+            showParams?.addEventListener('change', () => {
+              this.renderer.setOptions({ showParameters: showParams.checked });
+            });
+
+            const showPorts = document.getElementById('showPorts');
+            showPorts?.addEventListener('change', () => {
+              this.renderer.setOptions({ showPorts: showPorts.checked });
+            });
+
+            const zoomSlider = document.getElementById('zoomSlider');
+            zoomSlider?.addEventListener('input', () => {
+              const zoomValue = parseFloat(zoomSlider.value);
+              this.renderer.setZoom(zoomValue);
+            });
+
+            document.addEventListener('keydown', (event) => {
+              if (event.ctrlKey || event.metaKey) {
+                switch (event.key) {
+                  case 'o':
+                    event.preventDefault();
+                    fileInput?.click();
+                    break;
+                  case 's':
+                    event.preventDefault();
+                    this.exportChart();
+                    break;
+                }
+              }
+            });
+          }
+
+          async loadFromFile(file) {
+            try {
+              const text = await file.text();
+              this.loadFromJSON(text);
+            } catch (error) {
+              this.showError(`Errore nel caricamento del file: ${error}`);
+            }
+          }
+
+          loadFromJSON(jsonText) {
+            console.log('loadFromJSON called with text length:', jsonText.length);
+            try {
+              console.log('Parsing JSON...');
+              const jsonData = JSON.parse(jsonText);
+              console.log('JSON parsed successfully:', jsonData);
+              
+              console.log('Calling SimulinkJSONParser.parseJSON...');
+              const model = SimulinkJSONParser.parseJSON(jsonData);
+              console.log('Model parsed:', model);
+              
+              const validation = SimulinkJSONParser.validateModel(model);
+              if (!validation.isValid) {
+                console.warn('Problemi rilevati nel modello:', validation.errors);
+                this.showWarning(`Modello caricato con avvertimenti:\n${validation.errors.join('\n')}`);
+              }
+              
+              this.currentModel = model;
+              console.log('Calling renderer.render...');
+              this.renderer.render(model);
+              this.showSuccess(`Modello "${model.name}" caricato con successo! ${model.blocks.length} blocchi, ${model.connections.length} connessioni.`);
+              
+            } catch (error) {
+              console.error('Error in loadFromJSON:', error);
+              this.showError(`Errore nel parsing del JSON: ${error}`);
+            }
+          }
+
+          exportChart() {
+            if (!this.currentModel) {
+              this.showError('Nessun modello caricato da esportare');
+              return;
+            }
+
+            const svgData = this.renderer.exportAsSVG();
+            const blob = new Blob([svgData], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${this.currentModel.name}_diagram.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            this.showSuccess('Diagramma esportato come SVG');
+          }
+
+          showSampleData() {
+            const sampleJSON = {
+              "metadata": {
+                "sourceFile": "Esempio_Sistema_Alstom.mdl",
+                "subsystemName": "Sistema_Controllo_Pressione",
+                "totalBlocks": 6,
+                "categoryCounts": {
+                  "Variable": 4,
+                  "Logic Rule": 2
+                },
+                "exportedBy": "Simulink JSON Converter",
+                "version": "1.0.0"
+              },
+              "blockCategories": {
+                "Variable": {
+                  "count": 4,
+                  "blocks": [
+                    {
+                      "varId": "Serial From1",
+                      "description": "Pressione sensore A",
+                      "variableName": "pressione_A",
+                      "source": [],
+                      "destination": [{"varId": "Logical\\nOperator1"}]
+                    },
+                    {
+                      "varId": "Serial From2", 
+                      "description": "Pressione sensore B",
+                      "variableName": "pressione_B",
+                      "source": [],
+                      "destination": [{"varId": "Logical\\nOperator1"}]
+                    },
+                    {
+                      "varId": "LibFrom1",
+                      "description": "Comando compressore",
+                      "variableName": "comando_compressore",
+                      "source": [],
+                      "destination": [{"varId": "Logical\\nOperator2"}]
+                    },
+                    {
+                      "varId": "Serial Goto1",
+                      "description": "Uscita sistema",
+                      "variableName": "uscita_sistema",
+                      "source": [{"varId": "Logical\\nOperator2"}],
+                      "destination": []
+                    }
+                  ]
+                },
+                "Logic Rule": {
+                  "count": 2,
+                  "blocks": [
+                    {
+                      "varId": "Logical\\nOperator1",
+                      "opField": "OR",
+                      "opValue": "",
+                      "source": [
+                        {"varId": "Serial From1"},
+                        {"varId": "Serial From2"}
+                      ],
+                      "destination": [{"varId": "Logical\\nOperator2"}]
+                    },
+                    {
+                      "varId": "Logical\\nOperator2", 
+                      "opField": "AND",
+                      "opValue": "",
+                      "source": [
+                        {"varId": "LibFrom1"},
+                        {"varId": "Logical\\nOperator1"}
+                      ],
+                      "destination": [{"varId": "Serial Goto1"}]
+                    }
+                  ]
+                }
+              }
+            };
+
+            const jsonInput = document.getElementById('jsonInput');
+            if (jsonInput) {
+              jsonInput.value = JSON.stringify(sampleJSON, null, 2);
+            }
+          }
+
+          showSuccess(message) {
+            this.showNotification(message, 'success');
+          }
+
+          showError(message) {
+            this.showNotification(message, 'error');
+            console.error(message);
+          }
+
+          showWarning(message) {
+            this.showNotification(message, 'warning');
+            console.warn(message);
+          }
+
+          showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+              notification.style.opacity = '1';
+              notification.style.transform = 'translateY(0)';
+            }, 10);
+            
+            setTimeout(() => {
+              notification.style.opacity = '0';
+              notification.style.transform = 'translateY(-20px)';
+              setTimeout(() => {
+                document.body.removeChild(notification);
+              }, 300);
+            }, 5000);
+          }
+        }
+
+        // Inizializza l'applicazione quando il DOM è pronto
+        document.addEventListener('DOMContentLoaded', () => {
+          new SimulinkJSONToChartApp();
+        });
+    </script>
+  </body>
+</html>

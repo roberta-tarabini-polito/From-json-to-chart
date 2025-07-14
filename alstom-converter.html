@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertitore JSON Alstom → Diagramma</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+        
+        .input-panel {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .chart-panel {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+            background: white;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .status {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #a3cfbb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f1aeb5;
+        }
+        
+        .status.info {
+            background: #cff4fc;
+            color: #055160;
+            border: 1px solid #9eeaf9;
+        }
+        
+        #chart {
+            width: 100%;
+            height: 500px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        .block {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .block:hover {
+            filter: brightness(1.1);
+        }
+        
+        .block rect {
+            transition: all 0.2s ease;
+        }
+        
+        .block:hover rect {
+            stroke-width: 3px;
+            stroke: #667eea;
+        }
+        
+        .connection {
+            stroke: #495057;
+            stroke-width: 2.5;
+            fill: none;
+            marker-end: url(#arrowhead);
+            transition: all 0.2s ease;
+        }
+        
+        .connection:hover {
+            stroke: #667eea;
+            stroke-width: 3.5;
+        }
+        
+        .stats {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #dee2e6;
+        }
+        
+        .stats h4 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            color: #6c757d;
+        }
+        
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Convertitore Alstom JSON</h1>
+            <p>Trasforma i tuoi file JSON Alstom in diagrammi di flusso interattivi</p>
+        </div>
+        
+        <div class="content">
+            <div class="input-panel">
+                <h3>📥 JSON Alstom Input</h3>
+                <textarea id="jsonInput" placeholder="Incolla qui il JSON del tuo modello Alstom...">{
+  "metadata": {
+    "sourceFile": "esempio.mdl",
+    "subsystemName": "Esempio_Sistema_Pressione",
+    "totalBlocks": 6,
+    "categoryCounts": {
+      "Variable": 4,
+      "Logic Rule": 2
+    },
+    "exportedBy": "Alstom MDL Debug Tool",
+    "version": "1.0.0"
+  },
+  "blockCategories": {
+    "Variable": {
+      "count": 4,
+      "blocks": [
+        {
+          "varId": "LibFrom1",
+          "description": "Sensore pressione A",
+          "variableName": "pressione_A",
+          "destination": [{"varId": "Logical\\nOperator1"}]
+        },
+        {
+          "varId": "Serial From1",
+          "description": "Sensore pressione B", 
+          "variableName": "pressione_B",
+          "destination": [{"varId": "Logical\\nOperator1"}]
+        },
+        {
+          "varId": "Serial Goto1",
+          "description": "Allarme pressione bassa",
+          "variableName": "allarme_pressione",
+          "source": [{"varId": "Logical\\nOperator1"}]
+        },
+        {
+          "varId": "Serial Goto2",
+          "description": "Output comando valvola",
+          "variableName": "comando_valvola",
+          "source": [{"varId": "Logical\\nOperator2"}]
+        }
+      ]
+    },
+    "Logic Rule": {
+      "count": 2,
+      "blocks": [
+        {
+          "varId": "Logical\\nOperator1",
+          "opField": "OR",
+          "opValue": "",
+          "source": [{"varId": "LibFrom1"}, {"varId": "Serial From1"}],
+          "destination": [{"varId": "Serial Goto1"}, {"varId": "Logical\\nOperator2"}]
+        },
+        {
+          "varId": "Logical\\nOperator2",
+          "opField": "NOT",
+          "opValue": "",
+          "source": [{"varId": "Logical\\nOperator1"}],
+          "destination": [{"varId": "Serial Goto2"}]
+        }
+      ]
+    }
+  }
+}</textarea>
+                
+                <div style="margin: 20px 0;">
+                    <button class="button" onclick="convertJSON()">🚀 CONVERTI</button>
+                    <button class="button" onclick="clearAll()" style="background: #6c757d;">🗑️ Pulisci</button>
+                </div>
+                
+                <div id="status" class="status"></div>
+                
+                <div id="stats" class="stats" style="display: none;">
+                    <h4>📊 Statistiche Modello</h4>
+                    <div id="statsContent"></div>
+                </div>
+                
+                <div class="legend" id="legend" style="display: none;">
+                    <h4 style="grid-column: 1/-1; margin-bottom: 10px;">🎨 Legenda Blocchi</h4>
+                </div>
+            </div>
+            
+            <div class="chart-panel">
+                <h3>📊 Diagramma di Flusso</h3>
+                <div id="chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === CONFIGURAZIONE GLOBALE ===
+        const CONFIG = {
+            colors: {
+                'LibFrom': '#d4f6d4',      // Verde chiaro
+                'LibGoto': '#ffe0b3',      // Arancione chiaro  
+                'Costante': '#fff3b3',     // Giallo chiaro
+                'Logical Operator': '#b3e0ff', // Blu chiaro
+                'Terminatore': '#ffb3b3',  // Rosso chiaro
+                'Variable': '#e6b3ff',     // Viola chiaro
+                // Colori per i nuovi tipi di blocchi
+                'MUX': '#e0e0e0',         // Grigio chiaro per aste
+                'DEMUX': '#e0e0e0',       // Grigio chiaro per aste  
+                'COMPARE': '#fff0b3',     // Giallo-arancio per compare
+                'SWITCH': '#b3fff0',      // Verde acqua per switch
+                'WTB': '#f0b3ff'          // Rosa per WTB
+            },
+            layout: {
+                levelWidth: 280,
+                blockSpacing: 90,
+                startX: 50,
+                startY: 50
+            },
+            sizes: {
+                'LibFrom': {width: 140, height: 70},
+                'LibGoto': {width: 140, height: 70},
+                'Costante': {width: 100, height: 50},
+                'Logical Operator': {width: 90, height: 60},
+                'Terminatore': {width: 80, height: 40},
+                'Variable': {width: 140, height: 70},
+                // Dimensioni speciali per MUX e DEMUX (sottili e lunghi come aste)
+                'MUX': {width: 20, height: 120},
+                'DEMUX': {width: 20, height: 120},
+                'COMPARE': {width: 100, height: 60},
+                'SWITCH': {width: 80, height: 80},
+                'WTB': {width: 60, height: 50}
+            }
+        };
+
+        let currentModel = null;
+
+        // === FUNZIONI UTILITIES ===
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+            statusEl.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => statusEl.style.display = 'none', 4000);
+            }
+        }
+
+        function log(message, data = null) {
+            console.log(`[Alstom Converter] ${message}`, data || '');
+        }
+
+        // === PARSER JSON ALSTOM ===
+        function convertJSON() {
+            try {
+                showStatus('🔄 Conversione in corso...', 'info');
+                log('Inizio conversione JSON');
+                
+                const jsonText = document.getElementById('jsonInput').value.trim();
+                if (!jsonText) {
+                    throw new Error('Inserisci del JSON valido!');
+                }
+
+                // Parse JSON
+                const jsonData = JSON.parse(jsonText);
+                log('JSON parsato con successo');
+
+                // Verifica formato Alstom
+                if (!jsonData.metadata || !jsonData.blockCategories) {
+                    throw new Error('Formato JSON non valido! Deve contenere "metadata" e "blockCategories"');
+                }
+
+                // Converte in modello interno
+                const model = parseAlstomModel(jsonData);
+                log('Modello convertito', model);
+
+                // Visualizza
+                currentModel = model;
+                renderDiagram(model);
+                updateStats(model);
+                updateLegend();
+                
+                showStatus(`✅ Successo! ${model.blocks.length} blocchi, ${model.connections.length} connessioni`, 'success');
+
+            } catch (error) {
+                log('ERRORE', error.message);
+                showStatus(`❌ Errore: ${error.message}`, 'error');
+            }
+        }
+
+        function parseAlstomModel(data) {
+            const metadata = data.metadata;
+            const categories = data.blockCategories;
+            
+            const blocks = [];
+            const connections = [];
+
+            log('Categorie trovate', Object.keys(categories));
+
+            // === VARIABILI (contiene sia LibFrom/Serial From che Goto/Serial Goto) ===
+            if (categories.Variable?.blocks) {
+                categories.Variable.blocks.forEach(varBlock => {
+                    // Determina il tipo in base al varId
+                    let blockType = 'Variable';
+                    if (varBlock.varId.includes('LibFrom') || varBlock.varId.includes('Serial From')) {
+                        blockType = 'LibFrom'; // INPUT
+                    } else if (varBlock.varId.includes('Goto') || varBlock.varId.includes('Serial Goto')) {
+                        blockType = 'LibGoto'; // OUTPUT
+                    }
+                    
+                    blocks.push({
+                        id: varBlock.varId,
+                        name: varBlock.variableName || varBlock.varId,
+                        type: blockType,
+                        description: varBlock.description || '',
+                        x: 0, y: 0 // Posizionato dopo
+                    });
+
+                    // Connessioni dalle destination (se esistono)
+                    if (varBlock.destination && varBlock.destination.length > 0) {
+                        varBlock.destination.forEach((dest, idx) => {
+                            connections.push({
+                                id: `${varBlock.varId}_${dest.varId}_${idx}`,
+                                from: varBlock.varId,
+                                to: dest.varId
+                            });
+                        });
+                    }
+                });
+            }
+
+            // === OPERATORI LOGICI (AND, OR, NOT, Compare, Flip Flop, Switch, etc.) ===
+            if (categories['Logic Rule']?.blocks) {
+                categories['Logic Rule'].blocks.forEach(logicBlock => {
+                    // Determina il tipo specifico dall'opField
+                    let blockType = 'Logical Operator';
+                    if (logicBlock.opField === 'MUX') blockType = 'MUX';
+                    else if (logicBlock.opField === 'DEMUX') blockType = 'DEMUX';
+                    else if (logicBlock.opField === 'COMPARE') blockType = 'COMPARE';
+                    else if (logicBlock.opField === 'SWITCH') blockType = 'SWITCH';
+                    else if (logicBlock.opField === 'WTB') blockType = 'WTB';
+
+                    // Per i blocchi COMPARE, mostra l'opValue nel nome
+                    let displayName = logicBlock.opField || 'Logic';
+                    if (logicBlock.opField === 'COMPARE' && logicBlock.opValue) {
+                        displayName = logicBlock.opValue; // Mostra "== 2", "> 2", etc.
+                    }
+
+                    blocks.push({
+                        id: logicBlock.varId,
+                        name: displayName,
+                        type: blockType,
+                        operator: logicBlock.opField,
+                        opValue: logicBlock.opValue,
+                        x: 0, y: 0
+                    });
+
+                    // Connessioni dalle destination
+                    if (logicBlock.destination && logicBlock.destination.length > 0) {
+                        logicBlock.destination.forEach((dest, idx) => {
+                            connections.push({
+                                id: `${logicBlock.varId}_${dest.varId}_${idx}`,
+                                from: logicBlock.varId,
+                                to: dest.varId
+                            });
+                        });
+                    }
+                });
+            }
+
+            // Calcola layout
+            calculateLayout(blocks, connections);
+
+            return {
+                name: metadata.subsystemName || 'Modello Alstom',
+                blocks: blocks,
+                connections: connections,
+                metadata: metadata
+            };
+        }
+
+        function calculateLayout(blocks, connections) {
+            log('Calcolando layout gerarchico');
+
+            // Raggruppa per tipo logico
+            const inputBlocks = blocks.filter(b => b.type === 'LibFrom' || b.type === 'Costante');
+            const logicBlocks = blocks.filter(b => 
+                b.type === 'Logical Operator' || b.type === 'COMPARE' || 
+                b.type === 'SWITCH' || b.type === 'WTB'
+            );
+            const muxBlocks = blocks.filter(b => b.type === 'MUX' || b.type === 'DEMUX');
+            const outputBlocks = blocks.filter(b => b.type === 'LibGoto' || b.type === 'Terminatore');
+
+            // Posiziona in colonne con spazio extra per i MUX/DEMUX
+            const { levelWidth, blockSpacing, startX, startY } = CONFIG.layout;
+
+            // Colonna 1: Input
+            inputBlocks.forEach((block, i) => {
+                block.x = startX;
+                block.y = startY + (i * blockSpacing);
+            });
+
+            // Colonna 2: Logica (AND, OR, COMPARE, SWITCH, etc.)
+            logicBlocks.forEach((block, i) => {
+                block.x = startX + levelWidth;
+                block.y = startY + (i * blockSpacing);
+            });
+
+            // Colonna 2.5: MUX/DEMUX (posizionati tra logica e output)
+            muxBlocks.forEach((block, i) => {
+                block.x = startX + (1.5 * levelWidth);
+                block.y = startY + (i * blockSpacing);
+            });
+
+            // Colonna 3: Output
+            outputBlocks.forEach((block, i) => {
+                block.x = startX + (2.5 * levelWidth);
+                block.y = startY + (i * blockSpacing);
+            });
+
+            log('Layout calcolato', {
+                input: inputBlocks.length, 
+                logic: logicBlocks.length, 
+                mux: muxBlocks.length,
+                output: outputBlocks.length
+            });
+        }
+
+        // === RENDERING SVG ===
+        function renderDiagram(model) {
+            log('Renderizzando diagramma');
+
+            // Reset SVG
+            d3.select('#chart').selectAll('*').remove();
+
+            const svg = d3.select('#chart')
+                .append('svg')
+                .attr('width', '100%')
+                .attr('height', '100%')
+                .attr('viewBox', '0 0 900 500');
+
+            // Definisci frecce
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 8)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#495057');
+
+            // Disegna connessioni
+            svg.selectAll('.connection')
+                .data(model.connections)
+                .enter()
+                .append('line')
+                .attr('class', 'connection')
+                .attr('x1', d => {
+                    const fromBlock = model.blocks.find(b => b.id === d.from);
+                    const size = CONFIG.sizes[fromBlock.type] || {width: 100, height: 50};
+                    return fromBlock.x + size.width;
+                })
+                .attr('y1', d => {
+                    const fromBlock = model.blocks.find(b => b.id === d.from);
+                    const size = CONFIG.sizes[fromBlock.type] || {width: 100, height: 50};
+                    return fromBlock.y + size.height/2;
+                })
+                .attr('x2', d => {
+                    const toBlock = model.blocks.find(b => b.id === d.to);
+                    return toBlock.x;
+                })
+                .attr('y2', d => {
+                    const toBlock = model.blocks.find(b => b.id === d.to);
+                    const size = CONFIG.sizes[toBlock.type] || {width: 100, height: 50};
+                    return toBlock.y + size.height/2;
+                });
+
+            // Disegna blocchi
+            const blockGroups = svg.selectAll('.block')
+                .data(model.blocks)
+                .enter()
+                .append('g')
+                .attr('class', 'block')
+                .attr('transform', d => `translate(${d.x}, ${d.y})`);
+
+            // Rettangoli
+            blockGroups.append('rect')
+                .attr('width', d => CONFIG.sizes[d.type]?.width || 100)
+                .attr('height', d => CONFIG.sizes[d.type]?.height || 50)
+                .attr('fill', d => CONFIG.colors[d.type] || '#f0f0f0')
+                .attr('stroke', '#495057')
+                .attr('stroke-width', 2)
+                .attr('rx', 8);
+
+            // Testo principale
+            blockGroups.append('text')
+                .attr('x', d => (CONFIG.sizes[d.type]?.width || 100) / 2)
+                .attr('y', d => {
+                    const height = CONFIG.sizes[d.type]?.height || 50;
+                    // Per MUX/DEMUX (sottili), centra meglio il testo
+                    if (d.type === 'MUX' || d.type === 'DEMUX') {
+                        return height / 2;
+                    }
+                    return height / 2 - 5;
+                })
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('font-size', d => {
+                    // Font più piccolo per MUX/DEMUX (sono sottili)
+                    if (d.type === 'MUX' || d.type === 'DEMUX') return '10px';
+                    return '13px';
+                })
+                .attr('font-weight', 'bold')
+                .attr('fill', '#212529')
+                .attr('transform', d => {
+                    // Ruota il testo per MUX/DEMUX per leggibilità
+                    if (d.type === 'MUX' || d.type === 'DEMUX') {
+                        const centerX = (CONFIG.sizes[d.type]?.width || 100) / 2;
+                        const centerY = (CONFIG.sizes[d.type]?.height || 50) / 2;
+                        return `rotate(90, ${centerX}, ${centerY})`;
+                    }
+                    return '';
+                })
+                .text(d => d.name);
+
+            // Sottotesto tipo (solo per blocchi non MUX/DEMUX)
+            blockGroups.append('text')
+                .attr('x', d => (CONFIG.sizes[d.type]?.width || 100) / 2)
+                .attr('y', d => (CONFIG.sizes[d.type]?.height || 50) / 2 + 12)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '10px')
+                .attr('fill', '#6c757d')
+                .style('display', d => {
+                    // Nascondi il sottotesto per MUX/DEMUX (troppo sottili)
+                    if (d.type === 'MUX' || d.type === 'DEMUX') return 'none';
+                    return 'block';
+                })
+                .text(d => d.type);
+
+            log('Diagramma renderizzato con successo');
+        }
+
+        function updateStats(model) {
+            const statsEl = document.getElementById('statsContent');
+            const typeCounts = {};
+            
+            model.blocks.forEach(block => {
+                typeCounts[block.type] = (typeCounts[block.type] || 0) + 1;
+            });
+
+            let html = `
+                <div class="stat-item"><span>Nome Modello:</span><span>${model.name}</span></div>
+                <div class="stat-item"><span>Totale Blocchi:</span><span>${model.blocks.length}</span></div>
+                <div class="stat-item"><span>Connessioni:</span><span>${model.connections.length}</span></div>
+                <hr style="margin: 10px 0;">
+            `;
+
+            Object.entries(typeCounts).forEach(([type, count]) => {
+                html += `<div class="stat-item"><span>${type}:</span><span>${count}</span></div>`;
+            });
+
+            statsEl.innerHTML = html;
+            document.getElementById('stats').style.display = 'block';
+        }
+
+        function updateLegend() {
+            const legendEl = document.getElementById('legend');
+            const types = Object.keys(CONFIG.colors);
+            
+            let html = '';
+            types.forEach(type => {
+                html += `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: ${CONFIG.colors[type]};"></div>
+                        <span>${type}</span>
+                    </div>
+                `;
+            });
+
+            legendEl.innerHTML = '<h4 style="grid-column: 1/-1; margin-bottom: 10px;">🎨 Legenda Blocchi</h4>' + html;
+            legendEl.style.display = 'grid';
+        }
+
+        function clearAll() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('legend').style.display = 'none';
+            d3.select('#chart').selectAll('*').remove();
+            currentModel = null;
+            log('Interfaccia ripulita');
+        }
+
+        // === INIZIALIZZAZIONE ===
+        window.addEventListener('load', () => {
+            log('Applicazione caricata e pronta');
+            showStatus('👋 Benvenuto! Incolla il tuo JSON Alstom e clicca CONVERTI', 'info');
+        });
+    </script>
+</body>
+</html>

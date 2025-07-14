@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Base</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        textarea { width: 100%; height: 150px; margin: 10px 0; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #output { margin: 20px 0; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Test Funzionamento Base</h1>
+    
+    <h3>1. Test JavaScript Base</h3>
+    <button onclick="testJS()">Test JS</button>
+    <div id="js-result"></div>
+    
+    <h3>2. Test JSON Parse</h3>
+    <textarea id="jsonTest">{"test": "hello", "numero": 123}</textarea>
+    <button onclick="testJSON()">Test JSON</button>
+    <div id="json-result"></div>
+    
+    <h3>3. Test JSON Alstom</h3>
+    <textarea id="alstomTest">{
+  "metadata": {
+    "subsystemName": "Test"
+  },
+  "blockCategories": {
+    "Variable": {
+      "blocks": [
+        {
+          "varId": "test1",
+          "variableName": "Test Block"
+        }
+      ]
+    }
+  }
+}</textarea>
+    <button onclick="testAlstom()">Test Alstom</button>
+    <div id="alstom-result"></div>
+
+    <script>
+        function testJS() {
+            try {
+                document.getElementById('js-result').innerHTML = '<p style="color: green;">✓ JavaScript funziona!</p>';
+                console.log('JavaScript test OK');
+            } catch (error) {
+                document.getElementById('js-result').innerHTML = '<p style="color: red;">✗ Errore JS: ' + error + '</p>';
+            }
+        }
+
+        function testJSON() {
+            try {
+                const text = document.getElementById('jsonTest').value;
+                const parsed = JSON.parse(text);
+                document.getElementById('json-result').innerHTML = 
+                    '<p style="color: green;">✓ JSON Parse OK!</p>' +
+                    '<pre>' + JSON.stringify(parsed, null, 2) + '</pre>';
+                console.log('JSON test OK:', parsed);
+            } catch (error) {
+                document.getElementById('json-result').innerHTML = '<p style="color: red;">✗ Errore JSON: ' + error + '</p>';
+                console.error('JSON error:', error);
+            }
+        }
+
+        function testAlstom() {
+            try {
+                const text = document.getElementById('alstomTest').value;
+                console.log('Testing Alstom JSON:', text);
+                
+                const parsed = JSON.parse(text);
+                console.log('Parsed:', parsed);
+                
+                // Test parsing semplice
+                const metadata = parsed.metadata;
+                const blocks = parsed.blockCategories?.Variable?.blocks || [];
+                
+                let result = '<p style="color: green;">✓ Alstom Parse OK!</p>';
+                result += '<p><strong>Nome:</strong> ' + (metadata?.subsystemName || 'N/A') + '</p>';
+                result += '<p><strong>Blocchi variabili:</strong> ' + blocks.length + '</p>';
+                
+                if (blocks.length > 0) {
+                    result += '<ul>';
+                    blocks.forEach(block => {
+                        result += '<li>ID: ' + block.varId + ', Nome: ' + (block.variableName || 'N/A') + '</li>';
+                    });
+                    result += '</ul>';
+                }
+                
+                document.getElementById('alstom-result').innerHTML = result;
+                console.log('Alstom test OK');
+                
+            } catch (error) {
+                document.getElementById('alstom-result').innerHTML = '<p style="color: red;">✗ Errore Alstom: ' + error + '</p>';
+                console.error('Alstom error:', error);
+            }
+        }
+
+        // Test automatico all'avvio
+        window.onload = function() {
+            console.log('Pagina caricata, test automatico...');
+            testJS();
+        };
+    </script>
+</body>
+</html>
