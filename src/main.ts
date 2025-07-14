@@ -51,6 +51,12 @@ class SimulinkJSONToChartApp {
       this.renderer.setZoom(zoomValue);
     });
 
+    // Relayout button
+    const relayoutBtn = document.getElementById('relayoutBtn') as HTMLButtonElement;
+    relayoutBtn?.addEventListener('click', () => {
+      this.relayoutChart();
+    });
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (event) => {
       if (event.ctrlKey || event.metaKey) {
@@ -181,6 +187,16 @@ class SimulinkJSONToChartApp {
     const jsonInput = document.getElementById('jsonInput') as HTMLTextAreaElement;
     if (jsonInput) {
       jsonInput.value = JSON.stringify(sampleJSON, null, 2);
+    }
+  }
+
+  private relayoutChart(): void {
+    if (this.currentModel) {
+      // Usa il metodo relayout del renderer
+      this.renderer.relayout();
+      this.showSuccess('Layout riorganizzato con algoritmo gerarchico!');
+    } else {
+      this.showWarning('Nessun modello caricato da riorganizzare.');
     }
   }
 

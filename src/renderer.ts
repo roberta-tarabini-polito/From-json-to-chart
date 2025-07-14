@@ -103,6 +103,117 @@ export class SimulinkRenderer {
   private applyForceLayout(): void {
     if (!this.model) return;
     
+    // Prima prova con il layout gerarchico
+    if (this.applyHierarchicalLayout()) {
+      return;
+    }
+    
+    // Se fallisce, usa il layout di forze come fallback
+    this.applyRandomForceLayout();
+  }
+
+  private applyHierarchicalLayout(): boolean {
+    if (!this.model) return false;
+    
+    const blocks = this.model.blocks;
+    const connections = this.model.connections;
+    
+    // Costruisci grafo delle dipendenze
+    const graph = new Map<string, Set<string>>();
+    const inDegree = new Map<string, number>();
+    
+    // Inizializza
+    blocks.forEach(block => {
+      graph.set(block.id, new Set());
+      inDegree.set(block.id, 0);
+    });
+    
+    // Costruisci il grafo
+    connections.forEach(conn => {
+      const sourceId = conn.source.blockId;
+      const targetId = conn.target.blockId;
+      
+      if (!graph.get(sourceId)?.has(targetId)) {
+        graph.get(sourceId)?.add(targetId);
+        inDegree.set(targetId, (inDegree.get(targetId) || 0) + 1);
+      }
+    });
+    
+    // Topological sort per determinare i livelli
+    const levels = this.calculateLevels(graph, inDegree);
+    if (levels.length === 0) return false;
+    
+    // Posiziona i blocchi in base ai livelli
+    this.positionBlocksByLevels(levels);
+    
+    return true;
+  }
+
+  private calculateLevels(graph: Map<string, Set<string>>, inDegree: Map<string, number>): string[][] {
+    const levels: string[][] = [];
+    const queue: string[] = [];
+    const visited = new Set<string>();
+    
+    // Trova i nodi senza dipendenze (input blocks)
+    for (const [blockId, degree] of inDegree) {
+      if (degree === 0) {
+        queue.push(blockId);
+      }
+    }
+    
+    while (queue.length > 0) {
+      const currentLevel: string[] = [];
+      const levelSize = queue.length;
+      
+      for (let i = 0; i < levelSize; i++) {
+        const blockId = queue.shift()!;
+        currentLevel.push(blockId);
+        visited.add(blockId);
+        
+        // Aggiorna i successori
+        graph.get(blockId)?.forEach(successor => {
+          const newDegree = (inDegree.get(successor) || 0) - 1;
+          inDegree.set(successor, newDegree);
+          
+          if (newDegree === 0 && !visited.has(successor)) {
+            queue.push(successor);
+          }
+        });
+      }
+      
+      if (currentLevel.length > 0) {
+        levels.push(currentLevel);
+      }
+    }
+    
+    return levels;
+  }
+
+  private positionBlocksByLevels(levels: string[][]): void {
+    if (!this.model) return;
+    
+    const levelSpacing = 200; // Spaziatura orizzontale tra livelli
+    const blockSpacing = 100; // Spaziatura verticale tra blocchi
+    const startX = 100;
+    
+    levels.forEach((level, levelIndex) => {
+      const x = startX + levelIndex * levelSpacing;
+      const totalHeight = (level.length - 1) * blockSpacing;
+      const startY = 300 - totalHeight / 2; // Centra verticalmente
+      
+      level.forEach((blockId, blockIndex) => {
+        const block = this.model!.blocks.find(b => b.id === blockId);
+        if (block) {
+          block.position.x = x;
+          block.position.y = startY + blockIndex * blockSpacing;
+        }
+      });
+    });
+  }
+
+  private applyRandomForceLayout(): void {
+    if (!this.model) return;
+    
     const blocks = this.model.blocks;
     const connections = this.model.connections;
     
@@ -122,13 +233,13 @@ export class SimulinkRenderer {
     
     // Simulazione di forze
     const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-300))
+      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(150))
+      .force('charge', d3.forceManyBody().strength(-400))
       .force('center', d3.forceCenter(400, 300))
-      .force('collision', d3.forceCollide().radius(50));
+      .force('collision', d3.forceCollide().radius(60));
     
     // Esegui la simulazione per un numero fisso di iterazioni
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 400; i++) {
       simulation.tick();
     }
     
@@ -307,14 +418,21 @@ export class SimulinkRenderer {
     
     if (!sourceBlock || !targetBlock) return '';
     
-    // Calcola i punti di connessione
-    const sourceX = sourceBlock.position.x + (sourceBlock.position.width || 60);
-    const sourceY = sourceBlock.position.y + (sourceBlock.position.height || 30) / 2;
+    // Calcola i punti di connessione più precisi
+    const sourceWidth = sourceBlock.position.width || 60;
+    const sourceHeight = sourceBlock.position.height || 30;
+    const targetWidth = targetBlock.position.width || 60;
+    const targetHeight = targetBlock.position.height || 30;
     
+    // Punto di uscita (lato destro del blocco sorgente)
+    const sourceX = sourceBlock.position.x + sourceWidth;
+    const sourceY = sourceBlock.position.y + sourceHeight / 2;
+    
+    // Punto di ingresso (lato sinistro del blocco target)
     const targetX = targetBlock.position.x;
-    const targetY = targetBlock.position.y + (targetBlock.position.height || 30) / 2;
+    const targetY = targetBlock.position.y + targetHeight / 2;
     
-    // Se ci sono waypoints, usali
+    // Se ci sono waypoints definiti, usali
     if (connection.waypoints && connection.waypoints.length > 0) {
       let path = `M ${sourceX} ${sourceY}`;
       connection.waypoints.forEach(point => {
@@ -324,9 +442,23 @@ export class SimulinkRenderer {
       return path;
     }
     
-    // Altrimenti, crea una curva semplice
-    const midX = (sourceX + targetX) / 2;
-    return `M ${sourceX} ${sourceY} Q ${midX} ${sourceY} ${midX} ${(sourceY + targetY) / 2} Q ${midX} ${targetY} ${targetX} ${targetY}`;
+    // Crea connessioni intelligenti basate sulla posizione relativa
+    const deltaX = targetX - sourceX;
+    const deltaY = targetY - sourceY;
+    
+    if (Math.abs(deltaY) < 10) {
+      // Connessione orizzontale diretta se i blocchi sono allineati
+      return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+    } else if (deltaX > 50) {
+      // Connessione con curve dolci per flusso da sinistra a destra
+      const controlPointX1 = sourceX + Math.min(deltaX * 0.3, 60);
+      const controlPointX2 = targetX - Math.min(deltaX * 0.3, 60);
+      return `M ${sourceX} ${sourceY} C ${controlPointX1} ${sourceY} ${controlPointX2} ${targetY} ${targetX} ${targetY}`;
+    } else {
+      // Connessioni con angoli retti per layout più complessi
+      const midX = sourceX + Math.max(30, deltaX / 2);
+      return `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
+    }
   }
 
   private getBlockConfig(blockType: string): BlockRenderConfig {
@@ -480,5 +612,20 @@ export class SimulinkRenderer {
       img.onerror = reject;
       img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
     });
+  }
+
+  public relayout(): void {
+    if (this.model) {
+      // Reset posizioni e ricalcola layout
+      this.model.blocks.forEach(block => {
+        block.position.x = 0;
+        block.position.y = 0;
+      });
+      this.calculateLayout();
+      this.clearCanvas();
+      this.renderConnections();
+      this.renderBlocks();
+      this.centerView();
+    }
   }
 }
