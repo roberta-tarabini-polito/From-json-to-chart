@@ -205,7 +205,7 @@ export const BLOCK_RENDER_CONFIGS: Record<string, BlockRenderConfig> = {
   'Switch': {
     width: 90,
     height: 70,
-    color: '#E8F5E8',
+    color: '#E1F5FE',
     shape: 'rectangle',
     showPorts: true
   },
