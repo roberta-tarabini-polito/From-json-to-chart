@@ -157,7 +157,35 @@ export const BLOCK_RENDER_CONFIGS: Record<string, BlockRenderConfig> = {
     width: 80,
     height: 50,
     color: '#E1F5FE',
-    shape: 'diamond',
+    shape: 'rectangle',
+    showPorts: true
+  },
+  'OR': {
+    width: 80,
+    height: 50,
+    color: '#E1F5FE',
+    shape: 'rectangle',
+    showPorts: true
+  },
+  'AND': {
+    width: 80,
+    height: 50,
+    color: '#E1F5FE',
+    shape: 'rectangle',
+    showPorts: true
+  },
+  'NOT': {
+    width: 60,
+    height: 40,
+    color: '#E1F5FE',
+    shape: 'rectangle',
+    showPorts: true
+  },
+  'XOR': {
+    width: 80,
+    height: 50,
+    color: '#E1F5FE',
+    shape: 'rectangle',
     showPorts: true
   },
   'Terminatore': {
