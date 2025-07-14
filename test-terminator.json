@@ -1,0 +1,78 @@
+{
+  "name": "Test Terminator Simulink",
+  "version": "1.0",
+  "metadata": {
+    "created": "2025-01-13",
+    "simulinkVersion": "R2023b",
+    "author": "Simulink JSON Converter"
+  },
+  "blocks": [
+    {
+      "id": "input_signal",
+      "name": "Input Signal",
+      "blockType": "Constant",
+      "position": { "x": 50, "y": 100, "width": 80, "height": 40 },
+      "parameters": {
+        "Value": "1",
+        "OutDataTypeStr": "double"
+      }
+    },
+    {
+      "id": "flipflop_1",
+      "name": "FlipFlop 1",
+      "blockType": "Logical Operator",
+      "position": { "x": 200, "y": 100, "width": 60, "height": 40 },
+      "parameters": {
+        "Operator": "OR",
+        "Inputs": "2"
+      }
+    },
+    {
+      "id": "terminator_1",
+      "name": "Terminator 1",
+      "blockType": "Terminator",
+      "position": { "x": 350, "y": 80, "width": 60, "height": 30 },
+      "parameters": {}
+    },
+    {
+      "id": "terminator_2",
+      "name": "Terminator 2", 
+      "blockType": "Terminator",
+      "position": { "x": 350, "y": 130, "width": 60, "height": 30 },
+      "parameters": {}
+    },
+    {
+      "id": "scope_output",
+      "name": "Scope",
+      "blockType": "Scope",
+      "position": { "x": 500, "y": 100, "width": 60, "height": 40 },
+      "parameters": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_input_to_flipflop",
+      "source": { "blockId": "input_signal", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "flipflop_1", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "input", "dataType": "double" }
+    },
+    {
+      "id": "conn_flipflop_to_term1",
+      "source": { "blockId": "flipflop_1", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "terminator_1", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "output1", "dataType": "boolean" }
+    },
+    {
+      "id": "conn_flipflop_to_term2",
+      "source": { "blockId": "flipflop_1", "portId": "output", "portIndex": 1 },
+      "target": { "blockId": "terminator_2", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "output2", "dataType": "boolean" }
+    },
+    {
+      "id": "conn_flipflop_to_scope",
+      "source": { "blockId": "flipflop_1", "portId": "output", "portIndex": 0 },
+      "target": { "blockId": "scope_output", "portId": "input", "portIndex": 0 },
+      "signal": { "name": "monitor", "dataType": "boolean" }
+    }
+  ]
+}

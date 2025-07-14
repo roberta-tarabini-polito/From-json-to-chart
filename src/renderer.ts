@@ -33,17 +33,35 @@ export class SimulinkRenderer {
     // Definisci i marker per le frecce
     const defs = svg.append('defs');
     
+    // Marker normale
     defs.append('marker')
       .attr('id', 'arrowhead')
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 8)
+      .attr('viewBox', '0 -6 12 12')
+      .attr('refX', 10)
       .attr('refY', 0)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
+      .attr('markerWidth', 8)
+      .attr('markerHeight', 8)
       .attr('orient', 'auto')
+      .attr('markerUnits', 'strokeWidth')
       .append('path')
-      .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#333');
+      .attr('d', 'M0,-5L10,0L0,5L2,0Z')
+      .attr('fill', '#555')
+      .attr('stroke', 'none');
+
+    // Marker per hover/highlight
+    defs.append('marker')
+      .attr('id', 'arrowhead-highlight')
+      .attr('viewBox', '0 -6 12 12')
+      .attr('refX', 10)
+      .attr('refY', 0)
+      .attr('markerWidth', 8)
+      .attr('markerHeight', 8)
+      .attr('orient', 'auto')
+      .attr('markerUnits', 'strokeWidth')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5L2,0Z')
+      .attr('fill', '#4CAF50')
+      .attr('stroke', 'none');
 
     this.svg = svg.append('g')
       .attr('class', 'main-group');
@@ -382,23 +400,28 @@ export class SimulinkRenderer {
         .attr('r', 3);
     }
     
-    // Renderizza porte di output (destra)
-    if (block.outputs && block.outputs.length > 0) {
-      block.outputs.forEach((port, index) => {
-        const y = height * (index + 1) / (block.outputs!.length + 1);
+    // I Terminator non hanno porte di output (sono sink)
+    const isTerminator = block.blockType === 'Terminator' || block.blockType === 'Terminatore';
+    
+    if (!isTerminator) {
+      // Renderizza porte di output (destra) solo per blocchi non-terminator
+      if (block.outputs && block.outputs.length > 0) {
+        block.outputs.forEach((port, index) => {
+          const y = height * (index + 1) / (block.outputs!.length + 1);
+          element.append('circle')
+            .attr('class', 'port output')
+            .attr('cx', width + 3)
+            .attr('cy', y)
+            .attr('r', 3);
+        });
+      } else {
+        // Porta di output di default (solo per blocchi non-terminator)
         element.append('circle')
           .attr('class', 'port output')
           .attr('cx', width + 3)
-          .attr('cy', y)
+          .attr('cy', height / 2)
           .attr('r', 3);
-      });
-    } else {
-      // Porta di output di default
-      element.append('circle')
-        .attr('class', 'port output')
-        .attr('cx', width + 3)
-        .attr('cy', height / 2)
-        .attr('r', 3);
+      }
     }
   }
 
@@ -415,8 +438,18 @@ export class SimulinkRenderer {
       .append('path')
       .attr('class', 'connection connection-line')
       .attr('d', d => this.calculateConnectionPath(d))
-      .on('mouseover', (event, d) => this.showConnectionTooltip(event, d))
-      .on('mouseout', () => this.hideConnectionTooltip())
+      .on('mouseover', (event, d) => {
+        this.showConnectionTooltip(event, d);
+        d3.select(event.target)
+          .attr('marker-end', 'url(#arrowhead-highlight)')
+          .classed('highlighted', true);
+      })
+      .on('mouseout', () => {
+        this.hideConnectionTooltip();
+        d3.selectAll('.connection-line')
+          .attr('marker-end', 'url(#arrowhead)')
+          .classed('highlighted', false);
+      })
       .on('click', (event, d) => this.selectConnection(event, d));
 
     // Aggiungi punti di controllo sulle connessioni per permettere di spostarle
@@ -527,7 +560,7 @@ export class SimulinkRenderer {
     
     if (!sourceBlock || !targetBlock) return '';
     
-    // Calcola i punti di connessione più precisi
+    // Calcola i punti di connessione
     const sourceWidth = sourceBlock.position.width || 60;
     const sourceHeight = sourceBlock.position.height || 30;
     const targetWidth = targetBlock.position.width || 60;
@@ -541,33 +574,68 @@ export class SimulinkRenderer {
     const targetX = targetBlock.position.x;
     const targetY = targetBlock.position.y + targetHeight / 2;
     
-    // Se ci sono waypoints definiti, usali
+    // Se ci sono waypoints definiti, crea un percorso con angoli retti
     if (connection.waypoints && connection.waypoints.length > 0) {
       let path = `M ${sourceX} ${sourceY}`;
-      connection.waypoints.forEach(point => {
-        path += ` L ${point.x} ${point.y}`;
-      });
-      path += ` L ${targetX} ${targetY}`;
+      
+      // Primo waypoint: movimento orizzontale poi verticale
+      const firstWaypoint = connection.waypoints[0];
+      path += ` L ${firstWaypoint.x} ${sourceY} L ${firstWaypoint.x} ${firstWaypoint.y}`;
+      
+      // Waypoints intermedi: solo movimenti ortogonali
+      for (let i = 1; i < connection.waypoints.length; i++) {
+        const prevPoint = connection.waypoints[i - 1];
+        const currPoint = connection.waypoints[i];
+        
+        // Movimento orizzontale prima, poi verticale
+        path += ` L ${currPoint.x} ${prevPoint.y} L ${currPoint.x} ${currPoint.y}`;
+      }
+      
+      // Ultimo segmento verso il target
+      const lastWaypoint = connection.waypoints[connection.waypoints.length - 1];
+      path += ` L ${targetX} ${lastWaypoint.y} L ${targetX} ${targetY}`;
+      
       return path;
     }
     
-    // Crea connessioni intelligenti basate sulla posizione relativa
+    // Crea SOLO connessioni con angoli retti (orizzontali e verticali)
     const deltaX = targetX - sourceX;
     const deltaY = targetY - sourceY;
     
-    if (Math.abs(deltaY) < 10) {
-      // Connessione orizzontale diretta se i blocchi sono allineati
+    // Se sono perfettamente allineati orizzontalmente, linea diretta
+    if (Math.abs(deltaY) < 2) {
       return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
-    } else if (deltaX > 50) {
-      // Connessione con curve dolci per flusso da sinistra a destra
-      const controlPointX1 = sourceX + Math.min(deltaX * 0.3, 60);
-      const controlPointX2 = targetX - Math.min(deltaX * 0.3, 60);
-      return `M ${sourceX} ${sourceY} C ${controlPointX1} ${sourceY} ${controlPointX2} ${targetY} ${targetX} ${targetY}`;
-    } else {
-      // Connessioni con angoli retti per layout più complessi
-      const midX = sourceX + Math.max(30, deltaX / 2);
-      return `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
     }
+    
+    // Se sono perfettamente allineati verticalmente (caso raro)
+    if (Math.abs(deltaX) < 2) {
+      const midY = sourceY + deltaY / 2;
+      return `M ${sourceX} ${sourceY} L ${sourceX + 20} ${sourceY} L ${sourceX + 20} ${midY} L ${targetX - 20} ${midY} L ${targetX - 20} ${targetY} L ${targetX} ${targetY}`;
+    }
+    
+    // Algoritmo migliorato per il routing ortogonale
+    let midX: number;
+    const minGap = 20; // Spazio minimo tra i segmenti
+    
+    if (deltaX > minGap * 2) {
+      // Caso normale: c'è spazio sufficiente
+      midX = sourceX + deltaX / 2;
+    } else if (deltaX > 0) {
+      // Blocchi vicini ma target è a destra
+      midX = sourceX + Math.max(minGap, deltaX / 2);
+    } else {
+      // Target è a sinistra del source (feedback loop)
+      // Crea un percorso che evita sovrapposizioni
+      const maxY = Math.max(sourceBlock.position.y, targetBlock.position.y);
+      const minY = Math.min(sourceBlock.position.y, targetBlock.position.y);
+      const routeY = minY - 30; // Passa sopra entrambi i blocchi
+      
+      return `M ${sourceX} ${sourceY} L ${sourceX + minGap} ${sourceY} L ${sourceX + minGap} ${routeY} L ${targetX - minGap} ${routeY} L ${targetX - minGap} ${targetY} L ${targetX} ${targetY}`;
+    }
+    
+    // Costruisci il percorso standard con solo linee orizzontali e verticali
+    // Sequenza: orizzontale → verticale → orizzontale
+    return `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
   }
 
   private getBlockConfig(blockType: string): BlockRenderConfig {

@@ -239,16 +239,27 @@ main {
 /* Stili per le connessioni e punti di controllo */
 .connection-line {
   fill: none;
-  stroke: #333;
+  stroke: #555;
   stroke-width: 2px;
   marker-end: url(#arrowhead);
   cursor: pointer;
-  transition: stroke-width 0.2s ease;
+  transition: all 0.3s ease;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .connection-line:hover {
   stroke-width: 3px;
   stroke: #4CAF50;
+  filter: drop-shadow(0 0 3px rgba(76, 175, 80, 0.4));
+  marker-end: url(#arrowhead-highlight);
+}
+
+.connection-line.highlighted {
+  stroke: #2196F3;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 5px rgba(33, 150, 243, 0.6));
+  marker-end: url(#arrowhead-highlight);
 }
 
 .connection-control-point {
