@@ -319,7 +319,13 @@ export class SimulinkJSONParser {
           if (isSwitch) {
             sourcePortId = 'y';
           } else if (isFlipFlop) {
-            sourcePortId = 'Q';
+            // Per Flip-Flop, mappa le destinazioni alle porte di output
+            switch (destIndex) {
+              case 0: sourcePortId = 'Q'; break;
+              case 1: sourcePortId = 'Q!'; break;
+              default: sourcePortId = 'Q!'; break; // DEFAULT a Q! per i Terminator
+            }
+            console.log(`Parser FLIP-FLOP - destination[${destIndex}] -> porta ${sourcePortId}`);
           } else if (isWTB) {
             // Per WTB, mappa le destinazioni alle porte di output
             switch (destIndex) {
@@ -402,7 +408,8 @@ export class SimulinkJSONParser {
             if (sourceBlockObj.blockType === 'Switch') {
               sourcePortId = 'y';
             } else if (sourceBlockObj.blockType === 'FlipFlop') {
-              sourcePortId = 'Q';
+              // Per Flip-Flop, usa Q! come default per i Terminator
+              sourcePortId = 'Q!';
             } else if (sourceBlockObj.blockType === 'WTB') {
               sourcePortId = 'output1'; // Default alla prima uscita
             }
