@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "subsystemName": "Test Switch Block",
+    "version": "1.0",
+    "exportedBy": "Test System"
+  },
+  "blockCategories": {
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "switch1",
+          "variableName": "SW_SELECTOR",
+          "opField": "SWITCH",
+          "destination": [
+            {
+              "varId": "output1",
+              "srcPortId": "y"
+            }
+          ]
+        },
+        {
+          "varId": "input1", 
+          "variableName": "INPUT_X1",
+          "opField": "AND",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x1"
+            }
+          ]
+        },
+        {
+          "varId": "control1",
+          "variableName": "CONTROL_SW", 
+          "opField": "OR",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "sw"
+            }
+          ]
+        },
+        {
+          "varId": "input2",
+          "variableName": "INPUT_X2",
+          "opField": "NOT", 
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x2"
+            }
+          ]
+        },
+        {
+          "varId": "output1",
+          "variableName": "OUTPUT_Y",
+          "opField": "TERM",
+          "destination": []
+        }
+      ]
+    }
+  }
+}

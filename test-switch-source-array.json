@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "subsystemName": "Test Switch con Source Array",
+    "version": "1.0"
+  },
+  "blockCategories": {
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "Compare\\nTo Constant2",
+          "variableName": "Compare To Constant2",
+          "opField": "COMPARE",
+          "opValue": "== 2",
+          "destination": []
+        },
+        {
+          "varId": "Mux2",
+          "variableName": "Mux2", 
+          "opField": "MUX",
+          "opValue": "MUX",
+          "destination": []
+        },
+        {
+          "varId": "Mux1",
+          "variableName": "Mux1",
+          "opField": "MUX", 
+          "opValue": "MUX1",
+          "destination": []
+        },
+        {
+          "varId": "Switch\\n6",
+          "opField": "SWITCH",
+          "opValue": "",
+          "source": [
+            {
+              "varId": "Compare\\nTo Constant2"
+            },
+            {
+              "varId": "Mux2"
+            },
+            {
+              "varId": "Mux1"
+            }
+          ],
+          "destination": [
+            {
+              "varId": "Demux3"
+            },
+            {
+              "varId": "Inverted Switch\\n1"
+            }
+          ]
+        },
+        {
+          "varId": "Demux3",
+          "variableName": "Demux3",
+          "opField": "DEMUX",
+          "destination": []
+        },
+        {
+          "varId": "Inverted Switch\\n1",
+          "variableName": "Inverted Switch 1",
+          "opField": "INVERTED_SWITCH",
+          "destination": []
+        }
+      ]
+    }
+  }
+}

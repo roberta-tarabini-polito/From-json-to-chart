@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "subsystemName": "Test Switch - 3 Inputs",
+    "version": "1.0"
+  },
+  "blockCategories": {
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "to_x1",
+          "variableName": "TO_X1",
+          "opField": "AND",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x1"
+            }
+          ]
+        },
+        {
+          "varId": "to_sw",
+          "variableName": "TO_SW",
+          "opField": "OR",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "sw"
+            }
+          ]
+        },
+        {
+          "varId": "to_x2",
+          "variableName": "TO_X2",
+          "opField": "NOT",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x2"
+            }
+          ]
+        },
+        {
+          "varId": "switch1",
+          "variableName": "Switch",
+          "opField": "SWITCH",
+          "destination": []
+        }
+      ]
+    }
+  }
+}

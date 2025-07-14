@@ -1,0 +1,62 @@
+{
+  "metadata": {
+    "subsystemName": "Test Switch Simple",
+    "version": "1.0"
+  },
+  "blockCategories": {
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "switch1",
+          "variableName": "MainSwitch",
+          "opField": "SWITCH",
+          "destination": [
+            {
+              "varId": "out1",
+              "srcPortId": "y"
+            }
+          ]
+        },
+        {
+          "varId": "in1", 
+          "variableName": "Input1",
+          "opField": "AND",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x1"
+            }
+          ]
+        },
+        {
+          "varId": "ctrl",
+          "variableName": "Control", 
+          "opField": "OR",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "sw"
+            }
+          ]
+        },
+        {
+          "varId": "in2",
+          "variableName": "Input2",
+          "opField": "NOT", 
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x2"
+            }
+          ]
+        },
+        {
+          "varId": "out1",
+          "variableName": "Output",
+          "opField": "TERM",
+          "destination": []
+        }
+      ]
+    }
+  }
+}

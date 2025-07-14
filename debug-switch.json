@@ -1,0 +1,62 @@
+{
+  "metadata": {
+    "subsystemName": "Debug Switch Test",
+    "version": "1.0"
+  },
+  "blockCategories": {
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "input_x1",
+          "variableName": "TO_X1",
+          "opField": "AND",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x1"
+            }
+          ]
+        },
+        {
+          "varId": "input_sw",
+          "variableName": "TO_SW", 
+          "opField": "OR",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "sw"
+            }
+          ]
+        },
+        {
+          "varId": "input_x2",
+          "variableName": "TO_X2",
+          "opField": "NOT",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x2"
+            }
+          ]
+        },
+        {
+          "varId": "switch1",
+          "variableName": "MAIN_SWITCH",
+          "opField": "SWITCH",
+          "destination": [
+            {
+              "varId": "output1",
+              "srcPortId": "y"
+            }
+          ]
+        },
+        {
+          "varId": "output1",
+          "variableName": "RESULT",
+          "opField": "TERM",
+          "destination": []
+        }
+      ]
+    }
+  }
+}

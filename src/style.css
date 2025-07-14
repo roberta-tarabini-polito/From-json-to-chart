@@ -285,6 +285,17 @@ main {
   fill: #f44336;
 }
 
+/* Stili per le etichette delle porte dei Flip-Flop */
+.port-label {
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  text-anchor: start;
+  dominant-baseline: central;
+  pointer-events: none;
+  fill: #333;
+}
+
 button {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;

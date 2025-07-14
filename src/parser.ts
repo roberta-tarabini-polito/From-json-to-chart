@@ -199,17 +199,77 @@ export class SimulinkJSONParser {
     
     logicBlocks.forEach((logicBlock) => {
       const varId = logicBlock.varId;
-      const opField = logicBlock.opField; // AND, OR, NOT, etc.
+      const opField = logicBlock.opField; // AND, OR, NOT, FLIP FLOP, SWITCH, etc.
       const hasDestination = logicBlock.destination && Array.isArray(logicBlock.destination) && logicBlock.destination.length > 0;
+      
+      // Determina se è un Flip-Flop
+      const isFlipFlop = opField && (opField.includes('FLIP FLOP') || opField.includes('FFSH'));
+      
+      // Determina se è un Switch
+      const isSwitch = opField && (opField.includes('SWITCH') || opField.includes('Switch'));
       
       // Determina se è un Terminator: non ha destination o opField valido
       const isTerminator = !hasDestination || !opField || opField === '' || opField === 'TERM';
       
+      let blockType: string;
+      let name: string;
+      let dimensions: { width: number, height: number };
+      
+      if (isFlipFlop) {
+        blockType = 'FlipFlop';
+        name = 'FFSH';
+        dimensions = { width: 100, height: 60 };
+      } else if (isSwitch) {
+        blockType = 'Switch';
+        name = 'Switch';
+        dimensions = { width: 90, height: 70 };
+      } else if (isTerminator) {
+        blockType = 'Terminator';
+        name = logicBlock.variableName || 'Terminator';
+        dimensions = { width: 60, height: 30 };
+      } else {
+        blockType = 'Logical Operator';
+        name = opField || 'Logic';
+        dimensions = { width: 80, height: 50 };
+      }
+      
+      // Definisci le porte specifiche per i blocchi speciali
+      let inputs: SimulinkPort[] = [];
+      let outputs: SimulinkPort[] = [];
+      
+      if (isFlipFlop) {
+        inputs = [
+          { id: 'S', type: 'input', name: 'S' },
+          { id: 'R', type: 'input', name: 'R' }
+        ];
+        outputs = [
+          { id: 'Q', type: 'output', name: 'Q' },
+          { id: 'Q!', type: 'output', name: 'Q!' }
+        ];
+      } else if (isSwitch) {
+        inputs = [
+          { id: 'x1', type: 'input', name: 'x1' },
+          { id: 'sw', type: 'input', name: 'sw' },
+          { id: 'x2', type: 'input', name: 'x2' }
+        ];
+        outputs = [
+          { id: 'y', type: 'output', name: 'y' }
+        ];
+      } else if (isTerminator) {
+        inputs = [{ id: 'input', type: 'input', name: 'input' }];
+        outputs = []; // I Terminator non hanno output
+      } else {
+        inputs = [{ id: 'input', type: 'input', name: 'input' }];
+        outputs = [{ id: 'output', type: 'output', name: 'output' }];
+      }
+
       const block: SimulinkBlock = {
         id: varId,
-        name: isTerminator ? (logicBlock.variableName || 'Terminator') : (opField || 'Logic'),
-        blockType: isTerminator ? 'Terminator' : 'Logical Operator',
-        position: { x: 0, y: 0, width: isTerminator ? 60 : 80, height: isTerminator ? 30 : 50 }, // Posizione temporanea
+        name: name,
+        blockType: blockType,
+        position: { x: 0, y: 0, ...dimensions }, // Posizione temporanea
+        inputs: inputs,
+        outputs: outputs,
         parameters: isTerminator ? {} : {
           operator: opField,
           opValue: logicBlock.opValue
@@ -221,17 +281,97 @@ export class SimulinkJSONParser {
       // Crea connessioni per i destination (solo se non è un Terminator)
       if (!isTerminator && hasDestination) {
         logicBlock.destination.forEach((dest: any, destIndex: number) => {
+          // DEBUG: Mostra cosa c'è nell'oggetto dest
+          console.log(`Parser - Dest object:`, dest);
+          console.log(`Parser - srcPortId value: "${dest.srcPortId}"`);
+          
+          // Determina il portId di destinazione
+          let targetPortId = dest.srcPortId || 'input';
+          
+          console.log(`Parser - Final targetPortId: "${targetPortId}"`);
+          
+          // Per compatibilità, mappa alcuni alias comuni
+          if (targetPortId === 'srcPortId') {
+            targetPortId = 'input';
+          }
+          
           const connection: SimulinkConnection = {
             id: `${varId}_to_${dest.varId}_${destIndex}`,
             source: {
               blockId: varId,
-              portId: 'output'
+              portId: isSwitch ? 'y' : isFlipFlop ? 'Q' : 'output'
             },
             target: {
               blockId: dest.varId,
-              portId: 'input'
+              portId: targetPortId
             }
           };
+          
+          console.log(`Parser - Connessione creata:`, connection);
+          connections.push(connection);
+        });
+      }
+    });
+
+    // NUOVA GESTIONE: Crea connessioni dai blocchi con array 'source'
+    // Questo gestisce il caso dei blocchi che hanno una lista di ingressi
+    logicBlocks.forEach((logicBlock) => {
+      const varId = logicBlock.varId;
+      const isSwitch = logicBlock.opField && (logicBlock.opField.includes('SWITCH') || logicBlock.opField.includes('Switch'));
+      const isFlipFlop = logicBlock.opField && (logicBlock.opField.includes('FLIP FLOP') || logicBlock.opField.includes('FFSH'));
+      
+      // Se il blocco ha un array 'source', crea le connessioni in ingresso
+      if (logicBlock.source && Array.isArray(logicBlock.source) && logicBlock.source.length > 0) {
+        console.log(`Parser - Blocco ${varId} ha ${logicBlock.source.length} sources`);
+        
+        logicBlock.source.forEach((sourceBlock: any, sourceIndex: number) => {
+          let sourceBlockId = sourceBlock.varId || sourceBlock.id || sourceBlock;
+          let targetPortId = 'input'; // Default
+          
+          // Per blocchi Switch, assegna automaticamente i portId nell'ordine stabilito
+          if (isSwitch) {
+            switch (sourceIndex) {
+              case 0: targetPortId = 'x1'; break;
+              case 1: targetPortId = 'sw'; break; 
+              case 2: targetPortId = 'x2'; break;
+              default: targetPortId = 'input'; break;
+            }
+            console.log(`Parser SWITCH - source[${sourceIndex}] (${sourceBlockId}) -> porta ${targetPortId}`);
+          }
+          // Per blocchi FlipFlop, assegna S e R
+          else if (isFlipFlop) {
+            switch (sourceIndex) {
+              case 0: targetPortId = 'S'; break;
+              case 1: targetPortId = 'R'; break;
+              default: targetPortId = 'input'; break;
+            }
+            console.log(`Parser FLIP-FLOP - source[${sourceIndex}] (${sourceBlockId}) -> porta ${targetPortId}`);
+          }
+          
+          // Trova il blocco sorgente per determinare il portId di output
+          const sourceBlockObj = blocks.find(b => b.id === sourceBlockId);
+          let sourcePortId = 'output';
+          if (sourceBlockObj) {
+            if (sourceBlockObj.blockType === 'Switch') {
+              sourcePortId = 'y';
+            } else if (sourceBlockObj.blockType === 'FlipFlop') {
+              sourcePortId = 'Q';
+            }
+          }
+          
+          const connection: SimulinkConnection = {
+            id: `${sourceBlockId}_to_${varId}_${sourceIndex}`,
+            source: {
+              blockId: sourceBlockId,
+              portId: sourcePortId
+            },
+            target: {
+              blockId: varId,
+              portId: targetPortId
+            }
+          };
+          
+          console.log(`Parser - Connessione da SOURCE creata:`, connection);
           connections.push(connection);
         });
       }

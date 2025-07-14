@@ -381,7 +381,88 @@ export class SimulinkRenderer {
     const width = block.position.width || 60;
     const height = block.position.height || 30;
     
-    // Renderizza porte di input (sinistra)
+    // Gestione speciale per Flip-Flop
+    const isFlipFlop = block.blockType === 'FlipFlop' || block.blockType === 'FFSH' || 
+                       block.name === 'FFSH' || block.name === 'FlipFlop';
+    
+    // Gestione speciale per Switch
+    const isSwitch = block.blockType === 'Switch' || block.name === 'Switch';
+    
+    if (isFlipFlop) {
+      // Flip-Flop: Input S (alto sx), R (basso sx), Output Q (alto dx), Q! (basso dx)
+      
+      // Input S (Set) - alto a sinistra
+      element.append('circle')
+        .attr('class', 'port input')
+        .attr('cx', -3)
+        .attr('cy', height * 0.25)
+        .attr('r', 3);
+      
+      // Input R (Reset) - basso a sinistra  
+      element.append('circle')
+        .attr('class', 'port input')
+        .attr('cx', -3)
+        .attr('cy', height * 0.75)
+        .attr('r', 3);
+      
+      // Output Q - alto a destra
+      element.append('circle')
+        .attr('class', 'port output')
+        .attr('cx', width + 3)
+        .attr('cy', height * 0.25)
+        .attr('r', 3);
+      
+      // Output Q! (Q negato) - basso a destra
+      element.append('circle')
+        .attr('class', 'port output')
+        .attr('cx', width + 3)
+        .attr('cy', height * 0.75)
+        .attr('r', 3);
+      
+      // Aggiungi etichette delle porte per i Flip-Flop
+      this.renderFlipFlopPortLabels(element, block);
+      
+      return;
+    }
+    
+    if (isSwitch) {
+      // Switch: Input x1 (alto sx), sw (centro sx), x2 (basso sx), Output y (centro dx)
+      
+      // Input x1 - alto a sinistra
+      element.append('circle')
+        .attr('class', 'port input')
+        .attr('cx', -3)
+        .attr('cy', height * 0.2)
+        .attr('r', 3);
+      
+      // Input sw (controllo) - centro a sinistra
+      element.append('circle')
+        .attr('class', 'port input')
+        .attr('cx', -3)
+        .attr('cy', height * 0.5)
+        .attr('r', 3);
+      
+      // Input x2 - basso a sinistra  
+      element.append('circle')
+        .attr('class', 'port input')
+        .attr('cx', -3)
+        .attr('cy', height * 0.8)
+        .attr('r', 3);
+      
+      // Output y - centro a destra
+      element.append('circle')
+        .attr('class', 'port output')
+        .attr('cx', width + 3)
+        .attr('cy', height * 0.5)
+        .attr('r', 3);
+      
+      // Aggiungi etichette delle porte per i Switch
+      this.renderSwitchPortLabels(element, block);
+      
+      return;
+    }
+    
+    // Renderizza porte di input (sinistra) per blocchi normali
     if (block.inputs && block.inputs.length > 0) {
       block.inputs.forEach((port, index) => {
         const y = height * (index + 1) / (block.inputs!.length + 1);
@@ -423,6 +504,96 @@ export class SimulinkRenderer {
           .attr('r', 3);
       }
     }
+  }
+
+  private renderFlipFlopPortLabels(element: d3.Selection<d3.BaseType, SimulinkBlock, d3.BaseType, unknown>, block: SimulinkBlock): void {
+    const width = block.position.width || 100;
+    const height = block.position.height || 60;
+    
+    // Etichetta S (Set) - sinistra alto
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', 8)
+      .attr('y', height * 0.25 + 4)
+      .attr('font-size', '10px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('S');
+    
+    // Etichetta R (Reset) - sinistra basso
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', 8)
+      .attr('y', height * 0.75 + 4)
+      .attr('font-size', '10px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('R');
+    
+    // Etichetta Q - destra alto
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', width - 15)
+      .attr('y', height * 0.25 + 4)
+      .attr('font-size', '10px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('Q');
+    
+    // Etichetta Q! - destra basso
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', width - 20)
+      .attr('y', height * 0.75 + 4)
+      .attr('font-size', '10px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('Q!');
+  }
+
+  private renderSwitchPortLabels(element: d3.Selection<d3.BaseType, SimulinkBlock, d3.BaseType, unknown>, block: SimulinkBlock): void {
+    const width = block.position.width || 90;
+    const height = block.position.height || 70;
+    
+    // Etichetta x1 - sinistra alto
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', 8)
+      .attr('y', height * 0.2 + 4)
+      .attr('font-size', '9px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('x1');
+    
+    // Etichetta sw (controllo) - sinistra centro
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', 8)
+      .attr('y', height * 0.5 + 4)
+      .attr('font-size', '9px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('sw');
+    
+    // Etichetta x2 - sinistra basso
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', 8)
+      .attr('y', height * 0.8 + 4)
+      .attr('font-size', '9px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('x2');
+    
+    // Etichetta y - destra centro
+    element.append('text')
+      .attr('class', 'port-label')
+      .attr('x', width - 15)
+      .attr('y', height * 0.5 + 4)
+      .attr('font-size', '9px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#333')
+      .text('y');
   }
 
   private renderConnections(): void {
@@ -560,19 +731,19 @@ export class SimulinkRenderer {
     
     if (!sourceBlock || !targetBlock) return '';
     
-    // Calcola i punti di connessione
-    const sourceWidth = sourceBlock.position.width || 60;
-    const sourceHeight = sourceBlock.position.height || 30;
-    const targetWidth = targetBlock.position.width || 60;
-    const targetHeight = targetBlock.position.height || 30;
+    // DEBUG: Mostra il portId della connessione
+    if (targetBlock.blockType === 'Switch') {
+      console.log(`CONNESSIONE SWITCH: ${sourceBlock.id} -> ${targetBlock.id}, porta: "${connection.target.portId}"`);
+    }
     
-    // Punto di uscita (lato destro del blocco sorgente)
-    const sourceX = sourceBlock.position.x + sourceWidth;
-    const sourceY = sourceBlock.position.y + sourceHeight / 2;
+    // Calcola i punti di connessione usando le posizioni specifiche delle porte
+    const sourcePos = this.getPortPosition(sourceBlock, connection.source.portId, true);
+    const targetPos = this.getPortPosition(targetBlock, connection.target.portId, false);
     
-    // Punto di ingresso (lato sinistro del blocco target)
-    const targetX = targetBlock.position.x;
-    const targetY = targetBlock.position.y + targetHeight / 2;
+    const sourceX = sourcePos.x;
+    const sourceY = sourcePos.y;
+    const targetX = targetPos.x;
+    const targetY = targetPos.y;
     
     // Se ci sono waypoints definiti, crea un percorso con angoli retti
     if (connection.waypoints && connection.waypoints.length > 0) {
@@ -643,9 +814,15 @@ export class SimulinkRenderer {
   }
 
   private getBlockDisplayText(block: SimulinkBlock): string {
+    // Priorità: opValue > name (se diverso da blockType) > blockType
+    if (block.parameters && block.parameters.opValue && block.parameters.opValue !== '') {
+      return String(block.parameters.opValue);
+    }
+    
     if (block.name !== block.blockType) {
       return block.name;
     }
+    
     return block.blockType;
   }
 
@@ -911,5 +1088,62 @@ export class SimulinkRenderer {
         })
         .attr('d', this.calculateConnectionPath(connection));
     });
+  }
+
+  private getPortPosition(block: SimulinkBlock, portId: string, isOutput: boolean): { x: number, y: number } {
+    const width = block.position.width || 60;
+    const height = block.position.height || 30;
+    const baseX = isOutput ? block.position.x + width : block.position.x;
+    
+    // Gestione speciale per blocchi Switch
+    const isSwitch = block.blockType === 'Switch' || block.name === 'Switch';
+    if (isSwitch && !isOutput) {
+      // Mappa diretta delle porte Switch
+      switch (portId) {
+        case 'x1': 
+          return { x: baseX, y: block.position.y + height * 0.2 };
+        case 'sw': 
+          return { x: baseX, y: block.position.y + height * 0.5 };
+        case 'x2': 
+          return { x: baseX, y: block.position.y + height * 0.8 };
+        default:
+          return { x: baseX, y: block.position.y + height * 0.5 };
+      }
+    }
+    
+    if (isSwitch && isOutput) {
+      // Output port per Switch
+      return { x: baseX, y: block.position.y + height * 0.5 };
+    }
+    
+    // Gestione speciale per blocchi FlipFlop
+    const isFlipFlop = block.blockType === 'FlipFlop' || block.blockType === 'FFSH' || 
+                       block.name === 'FFSH' || block.name === 'FlipFlop';
+    if (isFlipFlop) {
+      if (!isOutput) {
+        // Input ports per FlipFlop
+        switch (portId) {
+          case 'S': return { x: baseX, y: block.position.y + height * 0.25 };
+          case 'R': return { x: baseX, y: block.position.y + height * 0.75 };
+          default: return { x: baseX, y: block.position.y + height / 2 };
+        }
+      } else {
+        // Output ports per FlipFlop
+        switch (portId) {
+          case 'Q': return { x: baseX, y: block.position.y + height * 0.25 };
+          case 'Q!': return { x: baseX, y: block.position.y + height * 0.75 };
+          default: return { x: baseX, y: block.position.y + height / 2 };
+        }
+      }
+    }
+    
+    // Gestione speciale per Terminator (solo input, nessun output)
+    const isTerminator = block.blockType === 'Terminator' || block.blockType === 'Terminatore';
+    if (isTerminator && !isOutput) {
+      return { x: baseX, y: block.position.y + height / 2 };
+    }
+    
+    // Default per blocchi normali
+    return { x: baseX, y: block.position.y + height / 2 };
   }
 }

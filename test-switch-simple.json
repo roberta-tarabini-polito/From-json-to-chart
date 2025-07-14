@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "subsystemName": "Simple Switch Test",
+    "version": "1.0"
+  },
+  "blockCategories": {
+    "Logic Rule": {
+      "blocks": [
+        {
+          "varId": "input1",
+          "variableName": "Input1",
+          "opField": "INPUT",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x1"
+            }
+          ]
+        },
+        {
+          "varId": "control", 
+          "variableName": "Control",
+          "opField": "INPUT",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "sw"
+            }
+          ]
+        },
+        {
+          "varId": "input2",
+          "variableName": "Input2", 
+          "opField": "INPUT",
+          "destination": [
+            {
+              "varId": "switch1",
+              "srcPortId": "x2"
+            }
+          ]
+        },
+        {
+          "varId": "switch1",
+          "variableName": "Switch1",
+          "opField": "SWITCH",
+          "destination": [
+            {
+              "varId": "output1"
+            }
+          ]
+        },
+        {
+          "varId": "output1",
+          "variableName": "Output1",
+          "opField": "OUTPUT",
+          "destination": []
+        }
+      ]
+    }
+  }
+}

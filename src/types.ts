@@ -188,6 +188,27 @@ export const BLOCK_RENDER_CONFIGS: Record<string, BlockRenderConfig> = {
     shape: 'rectangle',
     showPorts: true
   },
+  'FlipFlop': {
+    width: 100,
+    height: 60,
+    color: '#F3E5F5',
+    shape: 'rectangle',
+    showPorts: true
+  },
+  'FFSH': {
+    width: 100,
+    height: 60,
+    color: '#F3E5F5',
+    shape: 'rectangle',
+    showPorts: true
+  },
+  'Switch': {
+    width: 90,
+    height: 70,
+    color: '#E8F5E8',
+    shape: 'rectangle',
+    showPorts: true
+  },
   'Terminatore': {
     width: 60,
     height: 30,
