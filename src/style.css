@@ -214,6 +214,20 @@ main {
   stroke-width: 3px;
 }
 
+/* Stili per drag & drop dei blocchi */
+.simulink-block {
+  cursor: move;
+}
+
+.simulink-block.dragging {
+  opacity: 0.8;
+  filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
+}
+
+.simulink-block:hover .block-shape {
+  stroke-width: 2px;
+}
+
 .block-text {
   font-family: Arial, sans-serif;
   font-size: 11px;
@@ -222,11 +236,28 @@ main {
   pointer-events: none;
 }
 
+/* Stili per le connessioni e punti di controllo */
 .connection-line {
+  fill: none;
   stroke: #333;
   stroke-width: 2px;
-  fill: none;
   marker-end: url(#arrowhead);
+  cursor: pointer;
+  transition: stroke-width 0.2s ease;
+}
+
+.connection-line:hover {
+  stroke-width: 3px;
+  stroke: #4CAF50;
+}
+
+.connection-control-point {
+  transition: all 0.2s ease;
+}
+
+.connection-control-point:hover {
+  stroke-width: 3px !important;
+  opacity: 1 !important;
 }
 
 .port {

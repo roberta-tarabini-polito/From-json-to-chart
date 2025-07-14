@@ -265,15 +265,23 @@ export class SimulinkRenderer {
       .append('g')
       .attr('class', 'block simulink-block')
       .attr('transform', d => `translate(${d.position.x}, ${d.position.y})`)
+      .style('cursor', 'move')
       .on('click', (event, d) => this.selectBlock(d))
       .on('mouseover', (event, d) => this.showBlockTooltip(event, d))
       .on('mouseout', () => this.hideBlockTooltip());
+
+    // Applica il drag behavior
+    this.setupBlockDrag(blockSelection);
 
     // Renderizza la forma del blocco
     blockSelection.each((d, i, nodes) => {
       const element = d3.select(nodes[i]);
       this.renderBlockShape(element, d);
     });
+
+    // Aggiungi classe per identificare gli elementi shape
+    blockSelection.selectAll('rect, circle, polygon')
+      .attr('class', 'block-shape');
 
     // Renderizza il testo del blocco
     blockSelection.append('text')
@@ -399,7 +407,8 @@ export class SimulinkRenderer {
     
     const connectionsGroup = this.svg.append('g').attr('class', 'connections');
     
-    connectionsGroup
+    // Renderizza le linee delle connessioni
+    const connectionPaths = connectionsGroup
       .selectAll('.connection')
       .data(this.model.connections)
       .enter()
@@ -407,7 +416,107 @@ export class SimulinkRenderer {
       .attr('class', 'connection connection-line')
       .attr('d', d => this.calculateConnectionPath(d))
       .on('mouseover', (event, d) => this.showConnectionTooltip(event, d))
-      .on('mouseout', () => this.hideConnectionTooltip());
+      .on('mouseout', () => this.hideConnectionTooltip())
+      .on('click', (event, d) => this.selectConnection(event, d));
+
+    // Aggiungi punti di controllo sulle connessioni per permettere di spostarle
+    this.addConnectionControlPoints(connectionsGroup);
+  }
+
+  private addConnectionControlPoints(connectionsGroup: d3.Selection<SVGGElement, unknown, null, undefined>): void {
+    if (!this.model) return;
+
+    this.model.connections.forEach(connection => {
+      const sourceBlock = this.model!.blocks.find(b => b.id === connection.source.blockId);
+      const targetBlock = this.model!.blocks.find(b => b.id === connection.target.blockId);
+      
+      if (!sourceBlock || !targetBlock) return;
+
+      // Calcola il punto medio della connessione
+      const sourceX = sourceBlock.position.x + (sourceBlock.position.width || 60);
+      const sourceY = sourceBlock.position.y + (sourceBlock.position.height || 30) / 2;
+      const targetX = targetBlock.position.x;
+      const targetY = targetBlock.position.y + (targetBlock.position.height || 30) / 2;
+      
+      const midX = (sourceX + targetX) / 2;
+      const midY = (sourceY + targetY) / 2;
+
+      // Crea un punto di controllo invisibile al centro della connessione
+      const controlPoint = connectionsGroup
+        .append('circle')
+        .attr('class', 'connection-control-point')
+        .attr('cx', midX)
+        .attr('cy', midY)
+        .attr('r', 8)
+        .style('fill', 'transparent')
+        .style('stroke', '#4CAF50')
+        .style('stroke-width', '2px')
+        .style('cursor', 'move')
+        .style('opacity', 0);
+
+      // Mostra il punto di controllo al passaggio del mouse sulla connessione
+      const connectionPath = connectionsGroup.select(`path[data-connection-id="${connection.source.blockId}-${connection.target.blockId}"]`);
+      
+      connectionPath
+        .on('mouseenter', () => {
+          controlPoint.style('opacity', 1);
+        })
+        .on('mouseleave', () => {
+          controlPoint.style('opacity', 0);
+        });
+
+      // Applica drag behavior al punto di controllo
+      this.setupConnectionControlDrag(controlPoint, connection);
+    });
+  }
+
+  private setupConnectionControlDrag(controlPoint: d3.Selection<SVGCircleElement, unknown, null, undefined>, connection: SimulinkConnection): void {
+    const dragBehavior = d3.drag<SVGCircleElement, unknown>()
+      .on('start', () => {
+        controlPoint.style('fill', '#4CAF50').style('opacity', 1);
+      })
+      .on('drag', (event) => {
+        // Aggiorna la posizione del punto di controllo
+        controlPoint.attr('cx', event.x).attr('cy', event.y);
+        
+        // Aggiungi o aggiorna il waypoint nella connessione
+        if (!connection.waypoints) {
+          connection.waypoints = [];
+        }
+        
+        // Sostituisci il primo waypoint o aggiungilo
+        connection.waypoints[0] = { x: event.x, y: event.y };
+        
+        // Ridisegna la connessione
+        this.updateSingleConnection(connection);
+      })
+      .on('end', () => {
+        controlPoint.style('fill', 'transparent').style('opacity', 0);
+      });
+
+    controlPoint.call(dragBehavior);
+  }
+
+  private updateSingleConnection(connection: SimulinkConnection): void {
+    if (!this.model) return;
+    
+    // Trova e aggiorna la linea specifica
+    this.svg.select('.connections')
+      .selectAll('path')
+      .filter((d: any) => d && d.source.blockId === connection.source.blockId && d.target.blockId === connection.target.blockId)
+      .attr('d', this.calculateConnectionPath(connection));
+  }
+
+  private selectConnection(event: MouseEvent, connection: SimulinkConnection): void {
+    // Aggiungi waypoint nel punto cliccato
+    const [x, y] = d3.pointer(event);
+    
+    if (!connection.waypoints) {
+      connection.waypoints = [];
+    }
+    
+    connection.waypoints.push({ x, y });
+    this.updateConnections();
   }
 
   private calculateConnectionPath(connection: SimulinkConnection): string {
@@ -627,5 +736,112 @@ export class SimulinkRenderer {
       this.renderBlocks();
       this.centerView();
     }
+  }
+
+  // Gestione del drag & drop dei blocchi
+  private onDragStart(event: d3.D3DragEvent<SVGGElement, SimulinkBlock, SimulinkBlock>, block: SimulinkBlock): void {
+    // Porta il blocco in primo piano durante il drag
+    const element = d3.select(event.sourceEvent.target as SVGElement).node()?.parentNode as SVGGElement;
+    if (element) {
+      d3.select(element)
+        .raise()
+        .classed('dragging', true);
+    }
+    
+    // Disabilita lo zoom durante il drag
+    this.container.select('svg').on('.zoom', null);
+  }
+
+  private onDrag(event: d3.D3DragEvent<SVGGElement, SimulinkBlock, SimulinkBlock>, block: SimulinkBlock): void {
+    // Aggiorna la posizione del blocco
+    block.position.x = event.x;
+    block.position.y = event.y;
+    
+    // Aggiorna visualmente la posizione
+    const parentNode = d3.select(event.sourceEvent.target as SVGElement).node()?.parentNode as SVGGElement;
+    if (parentNode) {
+      d3.select(parentNode).attr('transform', `translate(${event.x}, ${event.y})`);
+    }
+    
+    // Ridisegna le connessioni in tempo reale
+    this.updateConnections();
+  }
+
+  private onDragEnd(event: d3.D3DragEvent<SVGGElement, SimulinkBlock, SimulinkBlock>, block: SimulinkBlock): void {
+    // Rimuovi la classe dragging
+    const element = d3.select(event.sourceEvent.target as SVGElement).node()?.parentNode as SVGGElement;
+    if (element) {
+      d3.select(element).classed('dragging', false);
+    }
+    
+    // Riabilita lo zoom
+    this.setupZoom();
+    
+    // Aggiorna le posizioni finali
+    block.position.x = event.x;
+    block.position.y = event.y;
+    
+    // Ridisegna completamente le connessioni per assicurarsi che siano corrette
+    this.updateConnections();
+  }
+
+  private updateConnections(): void {
+    if (!this.model) return;
+    
+    // Rimuovi tutte le connessioni esistenti
+    this.svg.select('.connections').remove();
+    
+    // Ridisegna le connessioni
+    this.renderConnections();
+  }
+
+  private setupBlockDrag(blockSelection: d3.Selection<SVGGElement, SimulinkBlock, SVGGElement, unknown>): void {
+    const dragBehavior = d3.drag<SVGGElement, SimulinkBlock>()
+      .on('start', function(event, d) {
+        // Porta in primo piano il blocco
+        d3.select(this).raise().classed('dragging', true);
+      })
+      .on('drag', function(event, d) {
+        // Aggiorna posizione del blocco
+        d.position.x = event.x;
+        d.position.y = event.y;
+        
+        // Aggiorna visivamente
+        d3.select(this).attr('transform', `translate(${event.x}, ${event.y})`);
+      })
+      .on('end', function(event, d) {
+        // Rimuovi classe dragging
+        d3.select(this).classed('dragging', false);
+        
+        // Aggiorna le connessioni alla fine
+        if (self.model) {
+          self.updateConnections();
+        }
+      });
+    
+    const self = this;
+    blockSelection.call(dragBehavior);
+  }
+
+  private updateConnectionsForBlock(blockId: string): void {
+    if (!this.model) return;
+    
+    // Trova tutte le connessioni che coinvolgono questo blocco
+    const relevantConnections = this.model.connections.filter(
+      conn => conn.source.blockId === blockId || conn.target.blockId === blockId
+    );
+    
+    // Aggiorna solo quelle connessioni
+    const connectionsGroup = this.svg.select('.connections');
+    relevantConnections.forEach(connection => {
+      connectionsGroup
+        .selectAll('path')
+        .filter((d: any) => {
+          return d && 
+                 d.source.blockId === connection.source.blockId && 
+                 d.target.blockId === connection.target.blockId;
+        })
+        .attr('d', this.calculateConnectionPath(connection));
+    });
   }
 }

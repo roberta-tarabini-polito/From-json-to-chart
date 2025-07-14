@@ -57,6 +57,12 @@ class SimulinkJSONToChartApp {
       this.relayoutChart();
     });
 
+    // Test drag button
+    const testDragBtn = document.getElementById('testDragBtn') as HTMLButtonElement;
+    testDragBtn?.addEventListener('click', () => {
+      this.testDragFunctionality();
+    });
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (event) => {
       if (event.ctrlKey || event.metaKey) {
@@ -197,6 +203,22 @@ class SimulinkJSONToChartApp {
       this.showSuccess('Layout riorganizzato con algoritmo gerarchico!');
     } else {
       this.showWarning('Nessun modello caricato da riorganizzare.');
+    }
+  }
+
+  private testDragFunctionality(): void {
+    console.log('Testing drag functionality...');
+    if (this.currentModel) {
+      const firstBlock = this.currentModel.blocks[0];
+      if (firstBlock) {
+        // Sposta il primo blocco di 50 pixel per testare
+        firstBlock.position.x += 50;
+        firstBlock.position.y += 50;
+        this.renderer.render(this.currentModel);
+        this.showSuccess('Test drag: Primo blocco spostato di 50px');
+      }
+    } else {
+      this.showWarning('Carica prima un modello per testare il drag');
     }
   }
 
